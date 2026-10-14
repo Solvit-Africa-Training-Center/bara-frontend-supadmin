@@ -1,212 +1,206 @@
-import type { ReactNode } from 'react';
+import Feather from '@expo/vector-icons/Feather';
+import { useState, type ReactNode } from 'react';
 import {
   Alert,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   View,
   type TextInputProps,
+  type TextStyle,
   type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import Svg, { Path, Rect } from 'react-native-svg';
-import { colors, radius, space } from '@/theme';
-import type { RestaurantStatus } from '@/data/store';
+import { colors, fonts } from '@/theme';
+import { ownerLine, type Plan, planFeatures } from '@/data/store';
 
-export function BaraLogo({ size = 28 }: { size?: number }) {
-  const s = size / 28;
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-      <Svg width={30 * s} height={28 * s} viewBox="0 0 30 28">
-        <Rect x="0" y="16" width="6" height="8" rx="2" fill={colors.primary} />
-        <Rect x="8" y="10" width="6" height="14" rx="2" fill="#E8590C" />
-        <Rect x="16" y="4" width="6" height="20" rx="2" fill={colors.brandGold} />
-        <Rect x="24" y="0" width="6" height="24" rx="2" fill={colors.brandGold} />
-        <Path d="M0 26.5h20" stroke={colors.text} strokeWidth="2" />
-        <Path d="M21 25l2 2 4-5" stroke={colors.success} strokeWidth="1.6" fill="none" />
-      </Svg>
-      <Text style={{ fontSize: 22 * s, fontWeight: '800', color: colors.brand }}>Bara</Text>
-    </View>
-  );
-}
+/* ---------- Screen frame: "BARA / PLATFORM ADMIN" header ---------- */
 
-export function Screen({ children, scroll = true }: { children: ReactNode; scroll?: boolean }) {
+export function AdminScreen({
+  title,
+  back,
+  showOwner,
+  children,
+}: {
+  title: string;
+  back?: string;
+  showOwner?: boolean;
+  children: ReactNode;
+}) {
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      {scroll ? (
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          {children}
-        </ScrollView>
-      ) : (
-        <View style={[styles.content, { flex: 1 }]}>{children}</View>
-      )}
+    <SafeAreaView style={s.safe} edges={['top']}>
+      <View style={s.header}>
+        <Text style={s.eyebrow}>BARA / PLATFORM ADMIN</Text>
+        {back ? (
+          <Pressable onPress={() => router.back()} hitSlop={8} style={s.back}>
+            <Feather name="arrow-left" size={13} color={colors.primary} />
+            <Text style={s.backText}>{back}</Text>
+          </Pressable>
+        ) : null}
+        <Text style={s.title}>{title}</Text>
+        {showOwner ? <Text style={s.owner}>{ownerLine}</Text> : null}
+      </View>
+      <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+        {children}
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-export function PageHeader({ eyebrow, title, subtitle, right }: { eyebrow?: string; title: string; subtitle?: string; right?: ReactNode }) {
+/* ---------- Text ---------- */
+
+export function H({ children, style }: { children: ReactNode; style?: TextStyle }) {
+  return <Text style={[s.cardTitle, style]}>{children}</Text>;
+}
+export function T({ children, style, muted, small, strong }: { children: ReactNode; style?: TextStyle; muted?: boolean; small?: boolean; strong?: boolean }) {
   return (
-    <View style={{ marginBottom: space.lg }}>
-      {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md }}>
-        <Text style={styles.title}>{title}</Text>
-        {right}
-      </View>
-      {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+    <Text
+      style={[
+        s.body,
+        muted && { color: colors.textMuted },
+        small && { fontSize: 11.5, lineHeight: 16 },
+        strong && { fontFamily: fonts.bodySemi },
+        style,
+      ]}
+    >
+      {children}
+    </Text>
+  );
+}
+export function Label({ children }: { children: ReactNode }) {
+  return <Text style={s.label}>{children}</Text>;
+}
+export function Gap({ h = 10 }: { h?: number }) {
+  return <View style={{ height: h }} />;
+}
+
+/* ---------- Containers ---------- */
+
+export function Card({ children, muted, style }: { children: ReactNode; muted?: boolean; style?: ViewStyle }) {
+  return <View style={[s.card, muted && { backgroundColor: colors.cardMuted }, style]}>{children}</View>;
+}
+
+export function InfoBox({ title, children, tone = 'green' }: { title: string; children: ReactNode; tone?: 'green' | 'yellow' }) {
+  return (
+    <View style={[s.info, { backgroundColor: tone === 'green' ? colors.greenBg : colors.yellowBg }]}>
+      <Text style={s.infoTitle}>{title}</Text>
+      <Text style={s.infoBody}>{children}</Text>
     </View>
   );
 }
 
-export function Card({ children, style, muted }: { children: ReactNode; style?: ViewStyle; muted?: boolean }) {
-  return <View style={[styles.card, muted && { backgroundColor: colors.surfaceMuted }, style]}>{children}</View>;
-}
+/* ---------- Pills ---------- */
 
-export function SectionTitle({ children, right }: { children: ReactNode; right?: ReactNode }) {
-  return (
-    <View style={styles.sectionRow}>
-      <Text style={styles.sectionTitle}>{children}</Text>
-      {right}
-    </View>
-  );
-}
-
-type Tone = 'success' | 'warning' | 'danger' | 'neutral' | 'primary';
-const toneColors: Record<Tone, [string, string]> = {
-  success: [colors.successSoft, colors.success],
-  warning: [colors.warningSoft, colors.warning],
-  danger: [colors.dangerSoft, colors.danger],
-  neutral: [colors.surfaceMuted, colors.textMuted],
-  primary: [colors.primarySoft, colors.primary],
+export type Tone = 'green' | 'yellow' | 'red' | 'neutral' | 'plain';
+const tones: Record<Tone, [string, string]> = {
+  green: [colors.greenBg, colors.greenText],
+  yellow: [colors.yellowBg, colors.yellowText],
+  red: [colors.redBg, colors.redText],
+  neutral: [colors.neutralBg, colors.neutralText],
+  plain: ['transparent', colors.neutralText],
 };
 
-export function Badge({ label, tone = 'neutral' }: { label: string; tone?: Tone }) {
-  const [bg, fg] = toneColors[tone];
-  return (
-    <View style={[styles.badge, { backgroundColor: bg }]}>
-      <Text style={[styles.badgeText, { color: fg }]}>{label}</Text>
+export function Pill({ label, tone = 'neutral', onPress }: { label: string; tone?: Tone; onPress?: () => void }) {
+  const [bg, fg] = tones[tone];
+  const body = (
+    <View style={[s.pill, { backgroundColor: bg }]}>
+      <Text style={[s.pillText, { color: fg }]}>{label}</Text>
     </View>
   );
+  return onPress ? <Pressable onPress={onPress}>{body}</Pressable> : body;
 }
 
-export const statusTone: Record<RestaurantStatus, Tone> = {
-  active: 'success',
-  pending: 'warning',
-  suspended: 'danger',
-};
-
-export function StatusBadge({ status }: { status: RestaurantStatus }) {
-  return <Badge label={status[0].toUpperCase() + status.slice(1)} tone={statusTone[status]} />;
+export function Row({ children, gap = 10, style }: { children: ReactNode; gap?: number; style?: ViewStyle }) {
+  return <View style={[{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap }, style]}>{children}</View>;
 }
 
-export function Button({
-  label,
-  onPress,
-  variant = 'primary',
-  small,
-  icon,
-  disabled,
-}: {
-  label: string;
-  onPress?: () => void;
-  variant?: 'primary' | 'outline' | 'danger' | 'ghost';
-  small?: boolean;
-  icon?: ReactNode;
-  disabled?: boolean;
-}) {
-  const v = {
-    primary: { bg: colors.primary, fg: '#fff', border: colors.primary },
-    outline: { bg: colors.surface, fg: colors.text, border: colors.border },
-    danger: { bg: colors.surface, fg: colors.danger, border: '#F1B5B5' },
-    ghost: { bg: 'transparent', fg: colors.primary, border: 'transparent' },
-  }[variant];
+/* ---------- Buttons ---------- */
+
+export function Btn({ label, onPress, variant = 'outline', disabled, style }: { label: string; onPress?: () => void; variant?: 'primary' | 'outline'; disabled?: boolean; style?: ViewStyle }) {
+  const primary = variant === 'primary';
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
       style={({ pressed }) => [
-        styles.button,
-        small && styles.buttonSmall,
-        { backgroundColor: v.bg, borderColor: v.border, opacity: disabled ? 0.5 : pressed ? 0.8 : 1 },
+        s.btn,
+        primary ? { backgroundColor: colors.primary, borderColor: colors.primary } : { backgroundColor: colors.card, borderColor: colors.border },
+        { opacity: disabled ? 0.45 : pressed ? 0.8 : 1 },
+        style,
       ]}
     >
-      {icon}
-      <Text style={[styles.buttonText, small && { fontSize: 13 }, { color: v.fg }]}>{label}</Text>
+      <Text style={[s.btnText, { color: primary ? '#fff' : colors.text }]}>{label}</Text>
     </Pressable>
   );
 }
 
-export function Field({ label, hint, ...props }: TextInputProps & { label: string; hint?: string }) {
+export function LinkArrow({ label, onPress }: { label: string; onPress?: () => void }) {
   return (
-    <View style={{ marginBottom: space.md }}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput placeholderTextColor="#B09A88" style={styles.input} {...props} />
-      {hint ? <Text style={styles.hint}>{hint}</Text> : null}
-    </View>
-  );
-}
-
-export function Chip({ label, active, onPress }: { label: string; active?: boolean; onPress?: () => void }) {
-  return (
-    <Pressable onPress={onPress} style={[styles.chip, active && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
-      <Text style={[styles.chipText, active && { color: '#fff' }]}>{label}</Text>
+    <Pressable onPress={onPress} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+      <Text style={{ fontFamily: fonts.bodySemi, fontSize: 12.5, color: colors.primary }}>{label}</Text>
+      <Feather name="arrow-right" size={13} color={colors.primary} />
     </Pressable>
   );
 }
 
-// Page header from the Figma frames: "BARA / PLATFORM ADMIN", a back link, a big title, a divider.
-export function AdminHeader({ back, title }: { back: string; title: string }) {
+/* ---------- Form fields ---------- */
+
+export function Input({ style, ...props }: TextInputProps) {
+  return <TextInput placeholderTextColor={colors.textMuted} style={[s.input, style]} {...props} />;
+}
+
+export function Select<V extends string>({ value, options, onChange }: { value: V; options: { value: V; label: string }[]; onChange: (v: V) => void }) {
+  const [open, setOpen] = useState(false);
+  const current = options.find((o) => o.value === value);
   return (
-    <View style={{ paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: space.md, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-      <Text style={[styles.eyebrow, { fontSize: 11 }]}>Bara / Platform admin</Text>
-      <Pressable onPress={() => router.back()} hitSlop={8} style={{ alignSelf: 'flex-start', marginTop: 6, marginBottom: 8 }}>
-        <Text style={{ color: colors.primary, fontSize: 13 }}>← {back}</Text>
+    <View>
+      <Pressable onPress={() => setOpen(!open)} style={[s.input, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
+        <Text style={s.inputText} numberOfLines={1}>
+          {current?.label}
+        </Text>
+        <Feather name={open ? 'chevron-up' : 'chevron-down'} size={16} color={colors.text} />
       </Pressable>
-      <Text style={styles.title}>{title}</Text>
+      {open ? (
+        <View style={s.menu}>
+          {options.map((o) => (
+            <Pressable
+              key={o.value}
+              onPress={() => {
+                onChange(o.value);
+                setOpen(false);
+              }}
+              style={{ paddingVertical: 10, paddingHorizontal: 12 }}
+            >
+              <Text style={[s.inputText, o.value === value && { color: colors.primary, fontFamily: fonts.bodySemi }]}>{o.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }
 
-// Full-screen page with the Figma admin header (used instead of the stack header).
-export function AdminPage({ back, title, children }: { back: string; title: string; children: ReactNode }) {
-  return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <AdminHeader back={back} title={title} />
-      <ScrollView contentContainerStyle={styles.content}>{children}</ScrollView>
-    </SafeAreaView>
-  );
-}
+/* ---------- Plan feature list (PREMIUM / PRO / BASIC) ---------- */
 
-// Scrollable body for pages pushed on the stack (they already get a header).
-export function Page({ children }: { children: ReactNode }) {
+export function PlanFeatures({ plan }: { plan: Plan }) {
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      {children}
-    </ScrollView>
-  );
-}
-
-export function ToggleRow({ label, hint, value, onChange, first }: { label: string; hint?: string; value: boolean; onChange: (v: boolean) => void; first?: boolean }) {
-  return (
-    <View style={[styles.kv, { paddingVertical: 12 }, !first && { borderTopWidth: 1, borderTopColor: colors.border }]}>
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>{label}</Text>
-        {hint ? <Text style={styles.muted}>{hint}</Text> : null}
-      </View>
-      <Switch
-        value={value}
-        onValueChange={onChange}
-        trackColor={{ false: colors.border, true: colors.primary }}
-        thumbColor="#fff"
-        {...({ activeThumbColor: '#fff' } as object)}
-      />
+    <View>
+      <Text style={s.planName}>{plan}</Text>
+      {planFeatures(plan).map((f) => (
+        <View key={f.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 }}>
+          {f.included ? <Feather name="check" size={12} color={colors.text} /> : <Text style={s.body}>—</Text>}
+          <Text style={s.body}>{f.included ? f.label : `No ${f.label}`}</Text>
+        </View>
+      ))}
     </View>
   );
 }
+
+/* ---------- Dialogs ---------- */
 
 export function confirm(title: string, message: string, onYes: () => void, yesLabel = 'Confirm') {
   if (Platform.OS === 'web') {
@@ -215,7 +209,7 @@ export function confirm(title: string, message: string, onYes: () => void, yesLa
   }
   Alert.alert(title, message, [
     { text: 'Cancel', style: 'cancel' },
-    { text: yesLabel, style: 'destructive', onPress: onYes },
+    { text: yesLabel, onPress: onYes },
   ]);
 }
 
@@ -224,69 +218,30 @@ export function notify(title: string, message: string) {
   else Alert.alert(title, message);
 }
 
-export function Row({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <View style={styles.kv}>
-      <Text style={styles.kvLabel}>{label}</Text>
-      {typeof value === 'string' ? <Text style={styles.kvValue}>{value}</Text> : value}
-    </View>
-  );
-}
+/* ---------- Styles ---------- */
 
-export const styles = StyleSheet.create({
+export const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: space.lg, paddingBottom: 32 },
-  eyebrow: { fontSize: 12, fontWeight: '700', color: colors.primary, letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 4 },
-  title: { fontSize: 26, fontWeight: '800', color: colors.text, flexShrink: 1 },
-  subtitle: { fontSize: 14, color: colors.textMuted, marginTop: 4 },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: space.lg,
-    marginBottom: space.md,
-  },
-  sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: space.sm, marginTop: space.sm },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
-  badge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: radius.pill, alignSelf: 'flex-start' },
-  badgeText: { fontSize: 12, fontWeight: '700' },
-  button: {
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    borderRadius: radius.md,
-    borderWidth: 1,
-  },
-  buttonSmall: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: radius.sm },
-  buttonText: { fontSize: 15, fontWeight: '700' },
-  label: { fontSize: 13, fontWeight: '600', color: colors.text, marginBottom: 6 },
-  input: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: colors.text,
-  },
-  hint: { fontSize: 12, color: colors.textMuted, marginTop: 4 },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  chipText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
-  kv: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, gap: 12 },
-  kvLabel: { fontSize: 14, color: colors.textMuted },
-  kvValue: { fontSize: 14, fontWeight: '600', color: colors.text, flexShrink: 1, textAlign: 'right' },
-  muted: { fontSize: 13, color: colors.textMuted },
-  strong: { fontSize: 15, fontWeight: '700', color: colors.text },
+  header: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.divider, backgroundColor: colors.bg },
+  eyebrow: { fontFamily: fonts.bodySemi, fontSize: 10, letterSpacing: 0.2, color: colors.primary },
+  back: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 10, alignSelf: 'flex-start' },
+  backText: { fontFamily: fonts.body, fontSize: 12, color: colors.primary },
+  title: { fontFamily: fonts.heading, fontSize: 24, lineHeight: 29, color: colors.text, marginTop: 8 },
+  owner: { fontFamily: fonts.body, fontSize: 12.5, color: colors.textMuted, marginTop: 6 },
+  content: { padding: 20, paddingBottom: 28 },
+  card: { backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 18, marginBottom: 14 },
+  cardTitle: { fontFamily: fonts.heading, fontSize: 14, color: colors.text, marginBottom: 10 },
+  body: { fontFamily: fonts.body, fontSize: 12.5, lineHeight: 18, color: colors.text },
+  label: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.text, marginBottom: 7 },
+  info: { borderRadius: 12, padding: 14, marginBottom: 14 },
+  infoTitle: { fontFamily: fonts.bodySemi, fontSize: 14, color: colors.text, marginBottom: 6 },
+  infoBody: { fontFamily: fonts.body, fontSize: 12.5, lineHeight: 18, color: colors.text },
+  pill: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, alignSelf: 'flex-start' },
+  pillText: { fontFamily: fonts.bodySemi, fontSize: 11.5 },
+  btn: { height: 44, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  btnText: { fontFamily: fonts.bodySemi, fontSize: 13.5 },
+  input: { backgroundColor: colors.field, borderWidth: 1, borderColor: colors.border, borderRadius: 10, minHeight: 43, paddingHorizontal: 12, paddingVertical: 10, fontFamily: fonts.body, fontSize: 14, color: colors.text },
+  inputText: { fontFamily: fonts.body, fontSize: 14, color: colors.text, flexShrink: 1 },
+  menu: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 10, marginTop: 4, paddingVertical: 4 },
+  planName: { fontFamily: fonts.bodySemi, fontSize: 11, color: colors.textMuted, marginLeft: 10, marginBottom: 8 },
 });

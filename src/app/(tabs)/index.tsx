@@ -1,116 +1,106 @@
-import Feather from '@expo/vector-icons/Feather';
-import { Pressable, Text, View } from 'react-native';
+import { View } from 'react-native';
 import { router } from 'expo-router';
-import { Badge, BaraLogo, Button, Card, Screen, SectionTitle, styles } from '@/components/ui';
-import { formatRwf, useStore } from '@/data/store';
-import { colors } from '@/theme';
-
-function greeting() {
-  const h = new Date().getHours();
-  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
-}
+import { AdminScreen, Btn, Card, H, LinkArrow, Pill, Row, T } from '@/components/ui';
+import { useStore } from '@/data/store';
+import { colors, fonts } from '@/theme';
 
 export default function Home() {
-  const { restaurants, requests, activity } = useStore();
-  const active = restaurants.filter((r) => r.status === 'active').length;
-  const open = requests.filter((r) => !r.resolved);
-  const sales = restaurants.reduce((s, r) => s + r.todaySales, 0);
-  const orders = restaurants.reduce((s, r) => s + r.ordersToday, 0);
-  const offline = restaurants.filter((r) => r.status === 'active' && r.lastSync.includes('day'));
+  const { restaurants, requests, payments, session, lastActivity } = useStore();
+  const active = restaurants.filter((r) => r.status === 'Active').length;
+  const grace = restaurants.filter((r) => r.status === 'Grace').length;
+  const overdue = restaurants.filter((r) => r.status !== 'Active').length;
+  const pending = requests.filter((r) => r.status === 'Pending');
+
+  const onboarding = pending.find((r) => r.kind === 'New restaurant');
+  const renewal = payments.find((p) => !p.applied);
+  const renewalTenant = restaurants.find((r) => r.id === renewal?.tenantId);
+  const supportTenant = restaurants.find((r) => r.id === session.restaurantId);
+
+  const attention = [
+    onboarding && {
+      key: 'req',
+      name: onboarding.restaurant,
+      detail: `${onboarding.id} · Onboarding · Payment verified`,
+      action: 'Review',
+      go: () => router.push({ pathname: '/requests/[id]', params: { id: onboarding.id } }),
+    },
+    renewalTenant?.status === 'Grace' && {
+      key: 'pay',
+      name: renewalTenant.name,
+      detail: '4 days overdue · Renewal ready',
+      action: 'Payment',
+      go: () => router.push({ pathname: '/more/subscriptions', params: { tenant: renewalTenant.id } }),
+    },
+    !session.resolved && {
+      key: 'sup',
+      name: supportTenant?.name ?? '',
+      detail: `${session.ticket} · Stock guidance needed`,
+      action: 'Support',
+      go: () => router.push('/more/support'),
+    },
+  ].filter(Boolean) as { key: string; name: string; detail: string; action: string; go: () => void }[];
 
   return (
-    <Screen>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <BaraLogo />
-        <Badge label="Super Admin" tone="primary" />
-      </View>
-
-      <Text style={styles.eyebrow}>Platform overview</Text>
-      <Text style={styles.title}>{greeting()}, Patrick</Text>
-      <Text style={[styles.subtitle, { marginBottom: 16 }]}>Here is what is happening across Bara today.</Text>
-
-      <View style={{ flexDirection: 'row', gap: 12 }}>
-        <Card style={{ flex: 1 }}>
-          <Text style={styles.muted}>Active restaurants</Text>
-          <Text style={{ fontSize: 28, fontWeight: '800', color: colors.text, marginTop: 6 }}>
-            {active}/{restaurants.length}
-          </Text>
-          <Text style={styles.muted}>on the platform</Text>
+    <AdminScreen title="Good morning, Derrick" showOwner>
+      <Row gap={14} style={{ marginBottom: 14, flexWrap: 'nowrap' }}>
+        <Card style={{ flex: 1, marginBottom: 0 }}>
+          <T muted>Active accounts</T>
+          <T style={{ fontFamily: fonts.heading, fontSize: 26, lineHeight: 34, marginVertical: 8 }}>
+            {active} / {restaurants.length}
+          </T>
+          <T muted small>
+            Plus {grace} in grace
+          </T>
         </Card>
-        <Card style={{ flex: 1 }}>
-          <Text style={styles.muted}>Open requests</Text>
-          <Text style={{ fontSize: 28, fontWeight: '800', color: colors.primary, marginTop: 6 }}>{open.length}</Text>
-          <Text style={styles.muted}>need a decision</Text>
+        <Card style={{ flex: 1, marginBottom: 0 }}>
+          <T muted>Pending requests</T>
+          <T style={{ fontFamily: fonts.heading, fontSize: 26, lineHeight: 34, marginVertical: 8 }}>{pending.length}</T>
+          <T muted small>
+            Ready for your review
+          </T>
         </Card>
-      </View>
+      </Row>
 
       <Card>
-        <Text style={styles.muted}>Sales across all restaurants today</Text>
-        <Text style={{ fontSize: 26, fontWeight: '800', color: colors.brand, marginTop: 4 }}>{formatRwf(sales)}</Text>
-        <Text style={styles.muted}>{orders} orders recorded</Text>
-      </Card>
-
-      <SectionTitle right={<Button label="See all" variant="ghost" small onPress={() => router.push('/(tabs)/requests')} />}>
-        Needs your attention
-      </SectionTitle>
-      <Card style={{ paddingVertical: 4 }}>
-        {open.length === 0 ? (
-          <Text style={[styles.muted, { paddingVertical: 12 }]}>All caught up.</Text>
-        ) : (
-          open.slice(0, 3).map((q, i) => {
-            const r = restaurants.find((x) => x.id === q.restaurantId);
-            return (
-              <Pressable
-                key={q.id}
-                onPress={() => router.push({ pathname: '/restaurant/[id]', params: { id: q.restaurantId } })}
-                style={{
-                  paddingVertical: 12,
-                  borderTopWidth: i ? 1 : 0,
-                  borderTopColor: colors.border,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                }}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.strong}>{r?.name}</Text>
-                  <Text style={styles.muted}>{q.title}</Text>
-                </View>
-                <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 13 }}>Review</Text>
-                <Feather name="chevron-right" size={16} color={colors.primary} />
-              </Pressable>
-            );
-          })
-        )}
-      </Card>
-
-      <SectionTitle>Platform health</SectionTitle>
-      <Card muted>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-          <Feather name="check-circle" size={18} color={colors.success} />
-          <Text style={styles.strong}>{offline.length ? `${offline.length} restaurant offline` : 'All POS devices synced'}</Text>
-        </View>
-        <Text style={styles.muted}>
-          Offline orders are stored on each device and upload automatically once the connection returns.
-        </Text>
-        <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-          <Badge label="API online" tone="success" />
-          <Badge label="Payments online" tone="success" />
-        </View>
-      </Card>
-
-      <SectionTitle>Recent activity</SectionTitle>
-      <Card style={{ paddingVertical: 4 }}>
-        {activity.slice(0, 5).map((a, i) => (
+        <H style={{ marginBottom: 4 }}>Needs your attention</H>
+        {attention.length === 0 ? <T muted style={{ paddingVertical: 10 }}>Nothing needs your attention.</T> : null}
+        {attention.map((a) => (
           <View
-            key={a.id}
-            style={{ paddingVertical: 10, borderTopWidth: i ? 1 : 0, borderTopColor: colors.border, flexDirection: 'row', gap: 12 }}
+            key={a.key}
+            style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.divider, gap: 10 }}
           >
-            <Text style={[styles.muted, { flex: 1, color: colors.text }]}>{a.text}</Text>
-            <Text style={styles.muted}>{a.time}</Text>
+            <View style={{ flex: 1 }}>
+              <T style={{ fontFamily: fonts.bodyMedium, fontSize: 13.5, marginBottom: 3 }}>{a.name}</T>
+              <T muted small>
+                {a.detail}
+              </T>
+            </View>
+            <LinkArrow label={a.action} onPress={a.go} />
           </View>
         ))}
       </Card>
-    </Screen>
+
+      <Card muted>
+        <H>Platform billing</H>
+        <T style={{ fontFamily: fonts.bodySemi, fontSize: 14, marginBottom: 10 }}>RWF 220,000 received</T>
+        <T muted style={{ marginBottom: 12 }}>
+          October to date · Sample subscription ledger. Not restaurant sales.
+        </T>
+        <Row>
+          <Pill label={`${overdue} overdue accounts`} tone="yellow" onPress={() => router.push('/restaurants')} />
+          <Pill label="2 support tickets" tone="plain" onPress={() => router.push('/more/support')} />
+        </Row>
+      </Card>
+
+      <H style={{ marginTop: 4 }}>More destinations</H>
+      <Row style={{ marginBottom: 14 }}>
+        <Btn label="Subscriptions" onPress={() => router.push('/more/subscriptions')} />
+        <Btn label="Support" onPress={() => router.push('/more/support')} />
+        <Btn label="Reports" onPress={() => router.push('/more/reports')} />
+      </Row>
+      <T muted small>
+        Available from More · Owner session authenticated · Last activity: {lastActivity}
+      </T>
+    </AdminScreen>
   );
 }

@@ -14,23 +14,23 @@ npx expo start
 
 ## Screens
 
-| Route | Screen |
-| --- | --- |
-| `/` | Sign in |
-| `/(tabs)` | Home – greeting, platform stats, items needing attention, health, activity |
-| `/(tabs)/restaurants` | Restaurants – search, status filters, list |
-| `/(tabs)/requests` | Requests – approvals, access, billing issues |
-| `/(tabs)/more` | Profile, settings links, sign out |
-| `/restaurant/[id]` | Restaurant detail – sales, manager access, approve / suspend |
-| `/restaurant/new` | Add restaurant & manager access |
-| `/settings/profile` | Edit your name and phone |
-| `/settings/billing` | Plans, monthly revenue, overdue payments |
-| `/settings/staff` | Platform staff – invite and remove |
-| `/settings/notifications` | Choose alerts and how they arrive |
-| `/settings/security` | Change password, two-step sign-in, signed-in devices |
-| `/settings/help` | FAQ and support contacts |
+Built from the Figma section **"Bara SUPER ADMIN — Mobile app"** (page *Bara App*).
+
+| Tab | Route | Figma frame |
+| --- | --- | --- |
+| Home | `/` | Good morning, Derrick |
+| Restaurants | `/restaurants` | Restaurants |
+| Restaurants | `/restaurants/[id]` | Kigali Heights (restaurant detail) |
+| Restaurants | `/restaurants/new` | Add restaurant & manager access |
+| Requests | `/requests` | Requests |
+| Requests | `/requests/[id]` | Review request |
+| More | `/more` | *(not in Figma – menu for the three pages below)* |
+| More | `/more/subscriptions` | Subscription & payment |
+| More | `/more/support` | Support inspection |
+| More | `/more/reports` | Platform reports |
 
 ## Notes
 
 - Data is mock data held in memory (`src/data/store.tsx`); it resets when the app reloads. Swap the store for API calls once the backend exists.
-- Colors live in `src/theme.ts`, taken from the Bara Figma file.
+- Colors and fonts (Ubuntu headings, Inter body) live in `src/theme.ts`, sampled from the Figma frames.
+- `archive/` holds earlier screens that were not in the Figma design. It is not part of the app.

@@ -1,36 +1,27 @@
+import { Inter_400Regular } from '@expo-google-fonts/inter/400Regular';
+import { Inter_500Medium } from '@expo-google-fonts/inter/500Medium';
+import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
+import { Inter_700Bold } from '@expo-google-fonts/inter/700Bold';
+import { Ubuntu_500Medium } from '@expo-google-fonts/ubuntu/500Medium';
+import { Ubuntu_700Bold } from '@expo-google-fonts/ubuntu/700Bold';
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StoreProvider } from '@/data/store';
 import { colors } from '@/theme';
 
 export default function RootLayout() {
+  const [loaded] = useFonts({ Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, Ubuntu_500Medium, Ubuntu_700Bold });
+
+  if (!loaded) return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
+
   return (
     <SafeAreaProvider>
       <StoreProvider>
         <StatusBar style="dark" />
-        <Stack
-          screenOptions={{
-            headerStyle: { backgroundColor: colors.bg },
-            headerShadowVisible: false,
-            headerTintColor: colors.primary,
-            headerTitleStyle: { color: colors.text, fontWeight: '700' },
-            contentStyle: { backgroundColor: colors.bg },
-          }}
-        >
-          <Stack.Screen name="index" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="restaurant/[id]" options={{ title: 'Restaurant' }} />
-          <Stack.Screen name="restaurant/new" options={{ title: 'New restaurant', presentation: 'modal' }} />
-          <Stack.Screen name="reports" options={{ headerShown: false }} />
-          <Stack.Screen name="request/[id]" options={{ headerShown: false }} />
-          <Stack.Screen name="settings/profile" options={{ title: 'Profile' }} />
-          <Stack.Screen name="settings/billing" options={{ title: 'Plans & billing' }} />
-          <Stack.Screen name="settings/staff" options={{ title: 'Platform staff' }} />
-          <Stack.Screen name="settings/notifications" options={{ title: 'Notifications' }} />
-          <Stack.Screen name="settings/security" options={{ title: 'Security' }} />
-          <Stack.Screen name="settings/help" options={{ title: 'Help & support' }} />
-        </Stack>
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
       </StoreProvider>
     </SafeAreaProvider>
   );
