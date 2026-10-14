@@ -45,17 +45,17 @@ export default function SupportInspection() {
         {session.messages.map((m, i) =>
           m.from === 'Derrick' ? (
             <View key={i} style={{ backgroundColor: colors.greenBg, borderRadius: 10, padding: 14, marginTop: 6, marginBottom: 6 }}>
-              <T style={{ fontFamily: fonts.bodySemi, fontSize: 14, marginBottom: 6 }}>
+              <T style={{ fontFamily: fonts.bodySemi, fontSize: 17, marginBottom: 6 }}>
                 {m.from} · {m.time}
               </T>
               <T>{m.text}</T>
             </View>
           ) : (
             <View key={i} style={{ marginBottom: 10 }}>
-              <T style={{ fontFamily: fonts.bodySemi, fontSize: 14, marginBottom: 10 }}>
+              <T style={{ fontFamily: fonts.bodySemi, fontSize: 17, marginBottom: 10 }}>
                 {m.from} · {m.time}
               </T>
-              <T style={{ fontSize: 13.5, lineHeight: 20 }}>{m.text}</T>
+              <T style={{ fontSize: 16, lineHeight: 24 }}>{m.text}</T>
             </View>
           ),
         )}
@@ -63,7 +63,7 @@ export default function SupportInspection() {
 
       <Card muted>
         <H>Operational / sync summary</H>
-        <T style={{ fontSize: 13.5, lineHeight: 20, marginBottom: 12 }}>● {session.summary}</T>
+        <T style={{ fontSize: 16, lineHeight: 24, marginBottom: 12 }}>● {session.summary}</T>
         <T muted>Flags need review, not automatic corrections. Summaries are scoped to this tenant only.</T>
       </Card>
 

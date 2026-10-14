@@ -62,7 +62,7 @@ export default function Subscription() {
           <View style={{ marginBottom: 12 }}>
             <Pill label={payment.applied ? 'Verified · Applied' : 'Verified · Not yet applied'} tone="green" />
           </View>
-          <T style={{ fontFamily: fonts.bodyBold, fontSize: 15, marginBottom: 10 }}>
+          <T style={{ fontFamily: fonts.bodyBold, fontSize: 18, marginBottom: 10 }}>
             {payment.reference} · {rwf(payment.amount)}
           </T>
           <T style={{ marginBottom: 12 }}>

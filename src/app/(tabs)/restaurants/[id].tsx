@@ -59,7 +59,7 @@ export default function RestaurantDetail() {
 
       <Card>
         <H>Manager & access</H>
-        <T style={{ fontFamily: fonts.bodySemi, fontSize: 14, marginBottom: 10 }}>{r.manager} · Primary manager</T>
+        <T style={{ fontFamily: fonts.bodySemi, fontSize: 17, marginBottom: 10 }}>{r.manager} · Primary manager</T>
         <T style={{ marginBottom: 10 }}>
           {r.email} · {r.phone}
         </T>
@@ -72,7 +72,7 @@ export default function RestaurantDetail() {
       <Card muted>
         <H>Plan & validity</H>
         <PlanFeatures plan={r.plan} />
-        <T style={{ fontFamily: fonts.bodySemi, fontSize: 14, marginTop: 6, marginBottom: 10 }}>Paid through {r.paidThrough}</T>
+        <T style={{ fontFamily: fonts.bodySemi, fontSize: 17, marginTop: 6, marginBottom: 10 }}>Paid through {r.paidThrough}</T>
         <T muted style={{ marginBottom: 14 }}>
           {paid ? `Current paid account · Full ${r.plan} access` : `${r.status} account · ${r.plan} access suspended`}
         </T>

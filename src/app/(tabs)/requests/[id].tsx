@@ -77,7 +77,7 @@ export default function ReviewRequest() {
               </T>
             ) : null}
           </Row>
-          <T style={{ fontFamily: fonts.bodyBold, fontSize: 15, marginBottom: 10 }}>
+          <T style={{ fontFamily: fonts.bodyBold, fontSize: 18, marginBottom: 10 }}>
             {p.reference} · {rwf(p.amount)}
           </T>
           <T style={{ marginBottom: 14 }}>
@@ -97,7 +97,7 @@ export default function ReviewRequest() {
         <H>{q.kind === 'Manager access' ? 'Access to restore' : 'Paid access to approve'}</H>
         <PlanFeatures plan={q.plan} />
         {q.period ? (
-          <T style={{ fontFamily: fonts.bodySemi, fontSize: 14, marginTop: 6, marginBottom: 10 }}>
+          <T style={{ fontFamily: fonts.bodySemi, fontSize: 17, marginTop: 6, marginBottom: 10 }}>
             {q.period.start.replace(' 2026', '')} – {q.period.end} · Active
           </T>
         ) : null}

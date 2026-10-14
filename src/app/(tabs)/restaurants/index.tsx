@@ -34,10 +34,10 @@ export default function Restaurants() {
         <Input style={{ flex: 1 }} placeholder="Name or manager..." value={query} onChangeText={setQuery} />
         <Pressable
           onPress={() => router.push('/restaurants/new')}
-          style={{ height: 43, paddingHorizontal: 16, borderRadius: 10, backgroundColor: colors.primary, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+          style={{ height: 48, paddingHorizontal: 18, borderRadius: 10, backgroundColor: colors.primary, flexDirection: 'row', alignItems: 'center', gap: 6 }}
         >
-          <Feather name="plus" size={16} color="#fff" />
-          <T style={{ color: '#fff', fontFamily: fonts.bodySemi, fontSize: 13.5 }}>Add</T>
+          <Feather name="plus" size={18} color="#fff" />
+          <T style={{ color: '#fff', fontFamily: fonts.bodySemi, fontSize: 16 }}>Add</T>
         </Pressable>
       </Row>
 
@@ -57,7 +57,7 @@ export default function Restaurants() {
           <Card style={{ paddingVertical: 16 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 10 }}>
               <View style={{ flex: 1 }}>
-                <T style={{ fontFamily: fonts.bodyMedium, fontSize: 14, marginBottom: 2 }}>{r.name}</T>
+                <T style={{ fontFamily: fonts.bodyMedium, fontSize: 17, marginBottom: 2 }}>{r.name}</T>
                 <T muted>{r.manager}</T>
               </View>
               <Pill label={r.status} tone={statusTone[r.status]} />

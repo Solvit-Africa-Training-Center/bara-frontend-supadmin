@@ -20,7 +20,7 @@ export default function More() {
         <Pressable key={it.label} onPress={() => router.push(it.href)}>
           <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <View style={{ flex: 1 }}>
-              <T style={{ fontFamily: fonts.heading, fontSize: 14, marginBottom: 4 }}>{it.label}</T>
+              <T style={{ fontFamily: fonts.heading, fontSize: 17, marginBottom: 4 }}>{it.label}</T>
               <T muted small>
                 {it.hint}
               </T>
