@@ -13,6 +13,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { colors, radius, space } from '@/theme';
 import type { RestaurantStatus } from '@/data/store';
@@ -154,6 +155,29 @@ export function Chip({ label, active, onPress }: { label: string; active?: boole
     <Pressable onPress={onPress} style={[styles.chip, active && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
       <Text style={[styles.chipText, active && { color: '#fff' }]}>{label}</Text>
     </Pressable>
+  );
+}
+
+// Page header from the Figma frames: "BARA / PLATFORM ADMIN", a back link, a big title, a divider.
+export function AdminHeader({ back, title }: { back: string; title: string }) {
+  return (
+    <View style={{ paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: space.md, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+      <Text style={[styles.eyebrow, { fontSize: 11 }]}>Bara / Platform admin</Text>
+      <Pressable onPress={() => router.back()} hitSlop={8} style={{ alignSelf: 'flex-start', marginTop: 6, marginBottom: 8 }}>
+        <Text style={{ color: colors.primary, fontSize: 13 }}>← {back}</Text>
+      </Pressable>
+      <Text style={styles.title}>{title}</Text>
+    </View>
+  );
+}
+
+// Full-screen page with the Figma admin header (used instead of the stack header).
+export function AdminPage({ back, title, children }: { back: string; title: string; children: ReactNode }) {
+  return (
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <AdminHeader back={back} title={title} />
+      <ScrollView contentContainerStyle={styles.content}>{children}</ScrollView>
+    </SafeAreaView>
   );
 }
 

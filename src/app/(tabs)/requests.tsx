@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Badge, Button, Card, Chip, PageHeader, Screen, styles } from '@/components/ui';
+import { reviewRequests } from '@/data/reviews';
 import { useStore, type RequestItem } from '@/data/store';
+import { colors } from '@/theme';
 
 const kindTone = { access: 'primary', support: 'warning', billing: 'danger' } as const;
 
@@ -23,6 +25,26 @@ export default function Requests() {
         <Chip label={`Open (${requests.filter((r) => !r.resolved).length})`} active={!showResolved} onPress={() => setShowResolved(false)} />
         <Chip label="Resolved" active={showResolved} onPress={() => setShowResolved(true)} />
       </View>
+
+      {!showResolved
+        ? reviewRequests
+            .filter((r) => r.status === 'Pending')
+            .map((r) => (
+              <Pressable key={r.id} onPress={() => router.push({ pathname: '/request/[id]', params: { id: r.id } })}>
+                <Card>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                    <Badge label={`${r.id} · ${r.status}`} tone="warning" />
+                    <Text style={styles.muted}>{r.submitted}</Text>
+                  </View>
+                  <Text style={styles.strong}>{r.restaurant}</Text>
+                  <Text style={styles.muted}>
+                    {r.location} · {r.plan} · RWF {r.payment.amount.toLocaleString('en-US')}
+                  </Text>
+                  <Text style={{ color: colors.primary, fontWeight: '700', marginTop: 8 }}>Review request →</Text>
+                </Card>
+              </Pressable>
+            ))
+        : null}
 
       {shown.length === 0 ? <Text style={styles.muted}>Nothing here.</Text> : null}
 

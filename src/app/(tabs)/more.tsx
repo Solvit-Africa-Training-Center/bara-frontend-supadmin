@@ -5,6 +5,7 @@ import { Button, Card, confirm, PageHeader, Screen, styles } from '@/components/
 import { colors } from '@/theme';
 
 const items = [
+  { icon: 'bar-chart-2', label: 'Reports', hint: 'Paid subscription receipts and account health', href: '/reports' },
   { icon: 'credit-card', label: 'Plans & billing', hint: 'Starter, Standard, Premium pricing', href: '/settings/billing' },
   { icon: 'users', label: 'Platform staff', hint: 'Who can use this Super Admin app', href: '/settings/staff' },
   { icon: 'bell', label: 'Notifications', hint: 'Alerts for approvals and outages', href: '/settings/notifications' },
