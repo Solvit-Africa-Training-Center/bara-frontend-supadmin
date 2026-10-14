@@ -30,6 +30,15 @@ export type RequestItem = {
 
 export type Activity = { id: string; text: string; time: string };
 
+export type StaffRole = 'Owner' | 'Admin' | 'Support';
+export type StaffMember = { id: string; name: string; email: string; role: StaffRole; invited?: boolean };
+
+const initialStaff: StaffMember[] = [
+  { id: 's1', name: 'Patrick N.', email: 'admin@bara.rw', role: 'Owner' },
+  { id: 's2', name: 'Sonia U.', email: 'sonia@bara.rw', role: 'Admin' },
+  { id: 's3', name: 'Eric M.', email: 'support@bara.rw', role: 'Support' },
+];
+
 const initialRestaurants: Restaurant[] = [
   {
     id: 'rw-402',
@@ -160,6 +169,9 @@ type Store = {
   addRestaurant: (r: Omit<Restaurant, 'id' | 'todaySales' | 'ordersToday' | 'lastSync' | 'joined' | 'status'>) => Restaurant;
   setStatus: (id: string, status: RestaurantStatus) => void;
   resolveRequest: (id: string) => void;
+  staff: StaffMember[];
+  inviteStaff: (name: string, email: string, role: StaffRole) => void;
+  removeStaff: (id: string) => void;
 };
 
 const StoreContext = createContext<Store | null>(null);
@@ -168,6 +180,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [restaurants, setRestaurants] = useState(initialRestaurants);
   const [requests, setRequests] = useState(initialRequests);
   const [activity, setActivity] = useState(initialActivity);
+  const [staff, setStaff] = useState(initialStaff);
 
   const log = (text: string) =>
     setActivity((a) => [{ id: String(Date.now()), text, time: 'Just now' }, ...a]);
@@ -197,6 +210,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
     resolveRequest: (id) =>
       setRequests((list) => list.map((x) => (x.id === id ? { ...x, resolved: true } : x))),
+    staff,
+    inviteStaff: (name, email, role) => {
+      setStaff((list) => [...list, { id: String(Date.now()), name, email, role, invited: true }]);
+      log(`${name} was invited as ${role}`);
+    },
+    removeStaff: (id) => setStaff((list) => list.filter((x) => x.id !== id)),
   };
 
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>;

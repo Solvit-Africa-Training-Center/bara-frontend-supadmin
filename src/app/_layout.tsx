@@ -22,6 +22,12 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="restaurant/[id]" options={{ title: 'Restaurant' }} />
           <Stack.Screen name="restaurant/new" options={{ title: 'New restaurant', presentation: 'modal' }} />
+          <Stack.Screen name="settings/profile" options={{ title: 'Profile' }} />
+          <Stack.Screen name="settings/billing" options={{ title: 'Plans & billing' }} />
+          <Stack.Screen name="settings/staff" options={{ title: 'Platform staff' }} />
+          <Stack.Screen name="settings/notifications" options={{ title: 'Notifications' }} />
+          <Stack.Screen name="settings/security" options={{ title: 'Security' }} />
+          <Stack.Screen name="settings/help" options={{ title: 'Help & support' }} />
         </Stack>
       </StoreProvider>
     </SafeAreaProvider>

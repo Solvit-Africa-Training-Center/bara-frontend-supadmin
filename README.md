@@ -23,6 +23,12 @@ npx expo start
 | `/(tabs)/more` | Profile, settings links, sign out |
 | `/restaurant/[id]` | Restaurant detail – sales, manager access, approve / suspend |
 | `/restaurant/new` | Add restaurant & manager access |
+| `/settings/profile` | Edit your name and phone |
+| `/settings/billing` | Plans, monthly revenue, overdue payments |
+| `/settings/staff` | Platform staff – invite and remove |
+| `/settings/notifications` | Choose alerts and how they arrive |
+| `/settings/security` | Change password, two-step sign-in, signed-in devices |
+| `/settings/help` | FAQ and support contacts |
 
 ## Notes
 

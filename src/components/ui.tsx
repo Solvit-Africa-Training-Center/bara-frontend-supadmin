@@ -1,8 +1,11 @@
 import type { ReactNode } from 'react';
 import {
+  Alert,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -152,6 +155,49 @@ export function Chip({ label, active, onPress }: { label: string; active?: boole
       <Text style={[styles.chipText, active && { color: '#fff' }]}>{label}</Text>
     </Pressable>
   );
+}
+
+// Scrollable body for pages pushed on the stack (they already get a header).
+export function Page({ children }: { children: ReactNode }) {
+  return (
+    <ScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      {children}
+    </ScrollView>
+  );
+}
+
+export function ToggleRow({ label, hint, value, onChange, first }: { label: string; hint?: string; value: boolean; onChange: (v: boolean) => void; first?: boolean }) {
+  return (
+    <View style={[styles.kv, { paddingVertical: 12 }, !first && { borderTopWidth: 1, borderTopColor: colors.border }]}>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>{label}</Text>
+        {hint ? <Text style={styles.muted}>{hint}</Text> : null}
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onChange}
+        trackColor={{ false: colors.border, true: colors.primary }}
+        thumbColor="#fff"
+        {...({ activeThumbColor: '#fff' } as object)}
+      />
+    </View>
+  );
+}
+
+export function confirm(title: string, message: string, onYes: () => void, yesLabel = 'Confirm') {
+  if (Platform.OS === 'web') {
+    if (window.confirm(`${title}\n\n${message}`)) onYes();
+    return;
+  }
+  Alert.alert(title, message, [
+    { text: 'Cancel', style: 'cancel' },
+    { text: yesLabel, style: 'destructive', onPress: onYes },
+  ]);
+}
+
+export function notify(title: string, message: string) {
+  if (Platform.OS === 'web') window.alert(`${title}\n\n${message}`);
+  else Alert.alert(title, message);
 }
 
 export function Row({ label, value }: { label: string; value: ReactNode }) {

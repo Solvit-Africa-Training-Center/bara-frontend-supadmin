@@ -1,20 +1,9 @@
 import Feather from '@expo/vector-icons/Feather';
-import { Alert, Platform, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { Badge, Button, Card, Row, SectionTitle, StatusBadge, styles } from '@/components/ui';
+import { Badge, Button, Card, confirm, notify, Row, SectionTitle, StatusBadge, styles } from '@/components/ui';
 import { formatRwf, useStore } from '@/data/store';
 import { colors } from '@/theme';
-
-function confirm(title: string, message: string, onYes: () => void) {
-  if (Platform.OS === 'web') {
-    if (window.confirm(`${title}\n\n${message}`)) onYes();
-    return;
-  }
-  Alert.alert(title, message, [
-    { text: 'Cancel', style: 'cancel' },
-    { text: 'Confirm', style: 'destructive', onPress: onYes },
-  ]);
-}
 
 export default function RestaurantDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -66,10 +55,10 @@ export default function RestaurantDetail() {
         <Row label="Email" value={r.manager.email} />
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
           <View style={{ flex: 1 }}>
-            <Button label="Resend invite" variant="outline" small icon={<Feather name="send" size={14} color={colors.text} />} />
+            <Button label="Resend invite" variant="outline" small onPress={() => notify('Invite sent', `A new SMS invite was sent to ${r.manager.phone}.`)} icon={<Feather name="send" size={14} color={colors.text} />} />
           </View>
           <View style={{ flex: 1 }}>
-            <Button label="Reset PIN" variant="outline" small icon={<Feather name="key" size={14} color={colors.text} />} />
+            <Button label="Reset PIN" variant="outline" small onPress={() => confirm('Reset manager PIN?', `${r.manager.name} will get an SMS to set a new PIN.`, () => notify('PIN reset', 'The manager can now set a new PIN.'), 'Reset')} icon={<Feather name="key" size={14} color={colors.text} />} />
           </View>
         </View>
       </Card>
