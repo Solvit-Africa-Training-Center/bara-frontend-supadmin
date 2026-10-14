@@ -37,7 +37,7 @@ export default function PlatformReports() {
 
       <Card>
         <H>Paid subscription receipts</H>
-        <T style={{ fontFamily: fonts.heading, fontSize: 31, lineHeight: 38.5, marginBottom: 8 }}>RWF 220,000</T>
+        <T style={{ fontFamily: fonts.heading, fontSize: 34, lineHeight: 42.5, marginBottom: 8 }}>RWF 220,000</T>
         <T muted style={{ marginBottom: 14 }}>
           October to date · Bara billing, not restaurant sales
         </T>
@@ -73,7 +73,7 @@ export default function PlatformReports() {
           <Pill label={`${count('Locked')} Locked`} tone="red" />
           <Pill label={`${count('Archived')} Archived`} tone="plain" />
         </Row>
-        <T style={{ fontSize: 16, lineHeight: 24 }}>
+        <T style={{ fontSize: 17.5, lineHeight: 26.5 }}>
           2 renewals due this month · {restaurants.filter((r) => r.status !== 'Active').length} overdue 4 of {restaurants.length} accounts synced today{' '}
           {count('Active') + count('Grace')} accounts have full tier access, including grace
         </T>
@@ -85,7 +85,7 @@ export default function PlatformReports() {
 
       <Card>
         <H>Flagged operations</H>
-        <T style={{ fontSize: 16, lineHeight: 24, marginBottom: 12 }}>Kigali Heights: oil usage +31% vs prior week; 7 evening voids vs 2.</T>
+        <T style={{ fontSize: 17.5, lineHeight: 26.5, marginBottom: 12 }}>Kigali Heights: oil usage +31% vs prior week; 7 evening voids vs 2.</T>
         <T muted style={{ marginBottom: 14 }}>
           Synced 09:38 · Aggregate tenant summaries. A flag is not proof of an error.
         </T>

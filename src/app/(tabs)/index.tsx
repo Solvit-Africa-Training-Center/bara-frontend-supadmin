@@ -45,7 +45,7 @@ export default function Home() {
       <Row gap={14} style={{ marginBottom: 14, flexWrap: 'nowrap' }}>
         <Card style={{ flex: 1, marginBottom: 0 }}>
           <T muted>Active accounts</T>
-          <T style={{ fontFamily: fonts.heading, fontSize: 31, lineHeight: 41, marginVertical: 8 }}>
+          <T style={{ fontFamily: fonts.heading, fontSize: 34, lineHeight: 45, marginVertical: 8 }}>
             {active} / {restaurants.length}
           </T>
           <T muted small>
@@ -54,7 +54,7 @@ export default function Home() {
         </Card>
         <Card style={{ flex: 1, marginBottom: 0 }}>
           <T muted>Pending requests</T>
-          <T style={{ fontFamily: fonts.heading, fontSize: 31, lineHeight: 41, marginVertical: 8 }}>{pending.length}</T>
+          <T style={{ fontFamily: fonts.heading, fontSize: 34, lineHeight: 45, marginVertical: 8 }}>{pending.length}</T>
           <T muted small>
             Ready for your review
           </T>
@@ -70,7 +70,7 @@ export default function Home() {
             style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.divider, gap: 10 }}
           >
             <View style={{ flex: 1 }}>
-              <T style={{ fontFamily: fonts.bodyMedium, fontSize: 16, marginBottom: 3 }}>{a.name}</T>
+              <T style={{ fontFamily: fonts.bodyMedium, fontSize: 17.5, marginBottom: 3 }}>{a.name}</T>
               <T muted small>
                 {a.detail}
               </T>
@@ -82,7 +82,7 @@ export default function Home() {
 
       <Card muted>
         <H>Platform billing</H>
-        <T style={{ fontFamily: fonts.bodySemi, fontSize: 17, marginBottom: 10 }}>RWF 220,000 received</T>
+        <T style={{ fontFamily: fonts.bodySemi, fontSize: 18.5, marginBottom: 10 }}>RWF 220,000 received</T>
         <T muted style={{ marginBottom: 12 }}>
           October to date · Sample subscription ledger. Not restaurant sales.
         </T>

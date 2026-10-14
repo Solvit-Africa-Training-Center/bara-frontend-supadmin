@@ -34,18 +34,20 @@ export function AdminScreen({
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <View style={s.header}>
-        <Text style={s.eyebrow}>BARA / PLATFORM ADMIN</Text>
-        {back ? (
-          <Pressable onPress={() => router.back()} hitSlop={8} style={s.back}>
-            <Feather name="arrow-left" size={15} color={colors.primary} />
-            <Text style={s.backText}>{back}</Text>
-          </Pressable>
-        ) : null}
-        <Text style={s.title}>{title}</Text>
-        {showOwner ? <Text style={s.owner}>{ownerLine}</Text> : null}
+        <View style={s.column}>
+          <Text style={s.eyebrow}>BARA / PLATFORM ADMIN</Text>
+          {back ? (
+            <Pressable onPress={() => router.back()} hitSlop={8} style={s.back}>
+              <Feather name="arrow-left" size={15} color={colors.primary} />
+              <Text style={s.backText}>{back}</Text>
+            </Pressable>
+          ) : null}
+          <Text style={s.title}>{title}</Text>
+          {showOwner ? <Text style={s.owner}>{ownerLine}</Text> : null}
+        </View>
       </View>
       <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
-        {children}
+        <View style={s.column}>{children}</View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -62,7 +64,7 @@ export function T({ children, style, muted, small, strong }: { children: ReactNo
       style={[
         s.body,
         muted && { color: colors.textMuted },
-        small && { fontSize: 14, lineHeight: 19 },
+        small && { fontSize: 15.5, lineHeight: 21 },
         strong && { fontFamily: fonts.bodySemi },
         style,
       ]}
@@ -141,7 +143,7 @@ export function Btn({ label, onPress, variant = 'outline', disabled, style }: { 
 export function LinkArrow({ label, onPress }: { label: string; onPress?: () => void }) {
   return (
     <Pressable onPress={onPress} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-      <Text style={{ fontFamily: fonts.bodySemi, fontSize: 15, color: colors.primary }}>{label}</Text>
+      <Text style={{ fontFamily: fonts.bodySemi, fontSize: 16.5, color: colors.primary }}>{label}</Text>
       <Feather name="arrow-right" size={15} color={colors.primary} />
     </Pressable>
   );
@@ -223,25 +225,27 @@ export function notify(title: string, message: string) {
 export const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   header: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.divider, backgroundColor: colors.bg },
-  eyebrow: { fontFamily: fonts.bodySemi, fontSize: 12, letterSpacing: 0.2, color: colors.primary },
+  eyebrow: { fontFamily: fonts.bodySemi, fontSize: 13, letterSpacing: 0.2, color: colors.primary },
   back: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 10, alignSelf: 'flex-start' },
-  backText: { fontFamily: fonts.body, fontSize: 14.5, color: colors.primary },
-  title: { fontFamily: fonts.heading, fontSize: 29, lineHeight: 35, color: colors.text, marginTop: 8 },
-  owner: { fontFamily: fonts.body, fontSize: 15, color: colors.textMuted, marginTop: 6 },
+  backText: { fontFamily: fonts.body, fontSize: 16, color: colors.primary },
+  // Keeps content at phone width when the app is opened in a wide browser window.
+  column: { width: '100%', maxWidth: 520, alignSelf: 'center' },
+  title: { fontFamily: fonts.heading, fontSize: 30, lineHeight: 36, color: colors.text, marginTop: 8 },
+  owner: { fontFamily: fonts.body, fontSize: 16.5, color: colors.textMuted, marginTop: 6 },
   content: { padding: 20, paddingBottom: 28 },
   card: { backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 18, marginBottom: 14 },
-  cardTitle: { fontFamily: fonts.heading, fontSize: 17, color: colors.text, marginBottom: 10 },
-  body: { fontFamily: fonts.body, fontSize: 15, lineHeight: 21.5, color: colors.text },
-  label: { fontFamily: fonts.bodySemi, fontSize: 14.5, color: colors.text, marginBottom: 7 },
+  cardTitle: { fontFamily: fonts.heading, fontSize: 18.5, color: colors.text, marginBottom: 10 },
+  body: { fontFamily: fonts.body, fontSize: 16.5, lineHeight: 23.5, color: colors.text },
+  label: { fontFamily: fonts.bodySemi, fontSize: 16, color: colors.text, marginBottom: 7 },
   info: { borderRadius: 12, padding: 14, marginBottom: 14 },
-  infoTitle: { fontFamily: fonts.bodySemi, fontSize: 17, color: colors.text, marginBottom: 6 },
-  infoBody: { fontFamily: fonts.body, fontSize: 15, lineHeight: 21.5, color: colors.text },
+  infoTitle: { fontFamily: fonts.bodySemi, fontSize: 18.5, color: colors.text, marginBottom: 6 },
+  infoBody: { fontFamily: fonts.body, fontSize: 16.5, lineHeight: 23.5, color: colors.text },
   pill: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, alignSelf: 'flex-start' },
-  pillText: { fontFamily: fonts.bodySemi, fontSize: 14 },
+  pillText: { fontFamily: fonts.bodySemi, fontSize: 15.5 },
   btn: { minHeight: 50, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
-  btnText: { fontFamily: fonts.bodySemi, fontSize: 16 },
-  input: { backgroundColor: colors.field, borderWidth: 1, borderColor: colors.border, borderRadius: 10, minHeight: 48, paddingHorizontal: 14, paddingVertical: 11, fontFamily: fonts.body, fontSize: 17, color: colors.text },
-  inputText: { fontFamily: fonts.body, fontSize: 17, color: colors.text, flexShrink: 1 },
+  btnText: { fontFamily: fonts.bodySemi, fontSize: 17.5 },
+  input: { backgroundColor: colors.field, borderWidth: 1, borderColor: colors.border, borderRadius: 10, minHeight: 48, paddingHorizontal: 14, paddingVertical: 11, fontFamily: fonts.body, fontSize: 18.5, color: colors.text },
+  inputText: { fontFamily: fonts.body, fontSize: 18.5, color: colors.text, flexShrink: 1 },
   menu: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 10, marginTop: 4, paddingVertical: 4 },
-  planName: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.textMuted, marginLeft: 10, marginBottom: 8 },
+  planName: { fontFamily: fonts.bodySemi, fontSize: 14.5, color: colors.textMuted, marginLeft: 10, marginBottom: 8 },
 });

@@ -37,7 +37,7 @@ export default function Restaurants() {
           style={{ height: 48, paddingHorizontal: 18, borderRadius: 10, backgroundColor: colors.primary, flexDirection: 'row', alignItems: 'center', gap: 6 }}
         >
           <Feather name="plus" size={18} color="#fff" />
-          <T style={{ color: '#fff', fontFamily: fonts.bodySemi, fontSize: 16 }}>Add</T>
+          <T style={{ color: '#fff', fontFamily: fonts.bodySemi, fontSize: 17.5 }}>Add</T>
         </Pressable>
       </Row>
 
@@ -57,7 +57,7 @@ export default function Restaurants() {
           <Card style={{ paddingVertical: 16 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 10 }}>
               <View style={{ flex: 1 }}>
-                <T style={{ fontFamily: fonts.bodyMedium, fontSize: 17, marginBottom: 2 }}>{r.name}</T>
+                <T style={{ fontFamily: fonts.bodyMedium, fontSize: 18.5, marginBottom: 2 }}>{r.name}</T>
                 <T muted>{r.manager}</T>
               </View>
               <Pill label={r.status} tone={statusTone[r.status]} />

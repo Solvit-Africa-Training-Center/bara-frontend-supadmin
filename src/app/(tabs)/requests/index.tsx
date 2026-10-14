@@ -40,7 +40,7 @@ export default function Requests() {
                 <Pill label={r.kind} tone="neutral" />
                 <T muted>{r.submitted}</T>
               </Row>
-              <T style={{ fontFamily: fonts.bodyMedium, fontSize: 17, marginBottom: 10 }}>{r.restaurant}</T>
+              <T style={{ fontFamily: fonts.bodyMedium, fontSize: 18.5, marginBottom: 10 }}>{r.restaurant}</T>
               <T muted style={{ marginBottom: 10 }}>
                 {r.manager} · {r.id}
               </T>
