@@ -1,24 +1,38 @@
 import Feather from '@expo/vector-icons/Feather';
+import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { errorMessage } from '@/api/client';
+import { ApiError, errorMessage } from '@/api/client';
 import { useSession } from '@/api/session';
-import { BaraLogo, Btn, Card, Gap, H, InfoBox, Input, Label, s, T } from '@/components/ui';
-import { colors, fonts } from '@/theme';
+import { AuthButton, AuthHeader, AuthLabel, authStyles, Checkbox, ErrorBox, IconInput, TextLink } from '@/components/auth';
+import { InfoBox, T } from '@/components/ui';
+import { colors } from '@/theme';
 
-// Not drawn in Figma: a sign-in screen in the same style as the Super Admin frames.
+type Mode = 'code' | 'password' | 'reset';
+
+const COPY: Record<Mode, { title: string; button: string; busy: string }> = {
+  code: { title: 'Admin Sign In', button: 'Sign in to Admin Panel', busy: 'Sending your PIN…' },
+  password: { title: 'Admin Sign In', button: 'Sign in to Admin Panel', busy: 'Signing in…' },
+  reset: { title: 'Reset password', button: 'Send reset link', busy: 'Sending…' },
+};
+
+// "Admin Sign In" frame: step 1 of sign-in. A 6-digit PIN is emailed, then entered on /verify-code.
 export default function SignIn() {
-  const { signIn, requestPasswordReset } = useSession();
-  const [mode, setMode] = useState<'signIn' | 'reset'>('signIn');
-  const [email, setEmail] = useState('');
+  const { remembered, signIn, requestLoginCode, requestPasswordReset } = useSession();
+  const [mode, setMode] = useState<Mode>('code');
+  const [email, setEmail] = useState(remembered?.email ?? '');
+  const [remember, setRemember] = useState(true);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [slow, setSlow] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // The password route stays available only while the server can't email PINs yet.
+  const [codesUnavailable, setCodesUnavailable] = useState(false);
   const slowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const copy = COPY[mode];
 
   useEffect(() => () => {
     if (slowTimer.current) clearTimeout(slowTimer.current);
@@ -33,6 +47,7 @@ export default function SignIn() {
     try {
       await task();
     } catch (e) {
+      if (e instanceof ApiError && (e.status === 404 || e.status === 405)) setCodesUnavailable(true);
       setError(errorMessage(e));
     } finally {
       if (slowTimer.current) clearTimeout(slowTimer.current);
@@ -44,105 +59,108 @@ export default function SignIn() {
   const validEmail = /^\S+@\S+\.\S+$/.test(email.trim());
 
   const submit = () => {
+    if (busy) return;
     if (!validEmail) return setError('Enter a valid email address.');
-    if (mode === 'signIn') {
+    const address = email.trim().toLowerCase();
+    if (mode === 'code') {
+      run(async () => {
+        await requestLoginCode(address);
+        router.push({ pathname: '/verify-code', params: { email: address, remember: remember ? '1' : '0' } });
+      });
+    } else if (mode === 'password') {
       if (!password) return setError('Enter your password.');
       // On success the session switches to signed in and the app opens Home.
-      run(() => signIn(email.trim().toLowerCase(), password));
+      run(() => signIn(address, password));
     } else {
-      run(async () => setNotice(await requestPasswordReset(email.trim().toLowerCase())));
+      run(async () => setNotice(await requestPasswordReset(address)));
     }
   };
 
+  const switchTo = (next: Mode) => {
+    setMode(next);
+    setError(null);
+    setNotice(null);
+  };
+
   return (
-    <SafeAreaView style={s.safe}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={[s.content, { flexGrow: 1, justifyContent: 'center' }]} keyboardShouldPersistTaps="handled">
-          <View style={s.column}>
-            <BaraLogo />
-            <Text style={[s.eyebrow, { marginTop: 28 }]}>BARA / PLATFORM ADMIN</Text>
-            <Text style={s.title}>{mode === 'signIn' ? 'Sign in' : 'Reset password'}</Text>
-            <T muted style={{ marginTop: 6, marginBottom: 20 }}>
-              {mode === 'signIn' ? 'Super Admin access for the Bara platform owner.' : 'We will email you a link to choose a new password.'}
+        <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 20, paddingBottom: 28 }} keyboardShouldPersistTaps="handled">
+          <View style={{ width: '100%', maxWidth: 520, alignSelf: 'center' }}>
+            <AuthHeader />
+
+            <Text style={[authStyles.eyebrow, { marginTop: 32 }]}>SECURE ACCESS</Text>
+            <Text style={authStyles.title}>{copy.title}</Text>
+            <T muted style={{ marginTop: 6, marginBottom: 28 }}>
+              {mode === 'reset' ? 'We will email you a link to choose a new password.' : 'Restricted to authorized personnel only'}
             </T>
 
-            <Card>
-              <H>{mode === 'signIn' ? 'Owner account' : 'Your account'}</H>
-              <Label>Email</Label>
-              <Input
-                value={email}
-                onChangeText={setEmail}
-                placeholder="you@bara.rw"
-                autoCapitalize="none"
-                autoComplete="email"
-                keyboardType="email-address"
-                editable={!busy}
-                onSubmitEditing={submit}
-              />
-              {mode === 'signIn' ? (
-                <>
-                  <Gap h={14} />
-                  <Label>Password</Label>
-                  <View style={{ justifyContent: 'center' }}>
-                    <Input
-                      value={password}
-                      onChangeText={setPassword}
-                      placeholder="Password"
-                      secureTextEntry={!showPassword}
-                      autoComplete="password"
-                      editable={!busy}
-                      onSubmitEditing={submit}
-                      style={{ paddingRight: 48 }}
-                    />
+            <AuthLabel>EMAIL ADDRESS</AuthLabel>
+            <IconInput
+              icon="mail"
+              value={email}
+              onChangeText={setEmail}
+              placeholder="you@bara.rw"
+              autoCapitalize="none"
+              autoComplete="email"
+              keyboardType="email-address"
+              editable={!busy}
+              onSubmitEditing={submit}
+            />
+
+            {mode === 'password' ? (
+              <View style={{ marginTop: 18 }}>
+                <AuthLabel>PASSWORD</AuthLabel>
+                <IconInput
+                  icon="lock"
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Password"
+                  secureTextEntry={!showPassword}
+                  autoComplete="password"
+                  editable={!busy}
+                  onSubmitEditing={submit}
+                  right={
                     <Pressable
                       onPress={() => setShowPassword(!showPassword)}
                       hitSlop={10}
-                      style={{ position: 'absolute', right: 14 }}
                       accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
                     >
                       <Feather name={showPassword ? 'eye-off' : 'eye'} size={20} color={colors.textMuted} />
                     </Pressable>
-                  </View>
+                  }
+                />
+              </View>
+            ) : null}
+
+            {mode === 'code' ? <Checkbox checked={remember} label="Remember me" onChange={setRemember} /> : null}
+
+            {error ? <ErrorBox>{error}</ErrorBox> : null}
+            {notice ? (
+              <View style={{ marginTop: 16 }}>
+                <InfoBox title="Check your email">{notice}</InfoBox>
+              </View>
+            ) : null}
+
+            <AuthButton label={copy.button} busyLabel={copy.busy} busy={busy} onPress={submit} />
+            {slow ? (
+              <T muted small style={{ marginTop: 12, textAlign: 'center' }}>
+                Waking up the Bara server… this can take up to a minute.
+              </T>
+            ) : null}
+
+            <View style={{ marginTop: 14 }}>
+              {mode === 'code' && codesUnavailable ? (
+                <TextLink label="Sign in with password instead" onPress={() => switchTo('password')} />
+              ) : null}
+              {mode === 'password' ? (
+                <>
+                  <TextLink label="Email me a PIN instead" onPress={() => switchTo('code')} />
+                  <TextLink label="Forgot password?" onPress={() => switchTo('reset')} />
                 </>
               ) : null}
-              <Gap h={18} />
-              {error ? (
-                <View style={{ backgroundColor: colors.redBg, borderRadius: 10, padding: 12, marginBottom: 14 }}>
-                  <T style={{ color: colors.redText }}>{error}</T>
-                </View>
-              ) : null}
-              {notice ? <InfoBox title="Check your email">{notice}</InfoBox> : null}
-              {busy ? (
-                <View style={[s.btn, { backgroundColor: colors.primary, borderColor: colors.primary, flexDirection: 'row', gap: 10 }]}>
-                  <ActivityIndicator color="#fff" />
-                  <Text style={[s.btnText, { color: '#fff' }]}>{mode === 'signIn' ? 'Signing in…' : 'Sending…'}</Text>
-                </View>
-              ) : (
-                <Btn label={mode === 'signIn' ? 'Sign in' : 'Send reset link'} variant="primary" onPress={submit} />
-              )}
-              {slow ? (
-                <T muted small style={{ marginTop: 12, textAlign: 'center' }}>
-                  Waking up the Bara server… the first sign-in can take up to a minute.
-                </T>
-              ) : null}
-            </Card>
-
-            <Pressable
-              onPress={() => {
-                setMode(mode === 'signIn' ? 'reset' : 'signIn');
-                setError(null);
-                setNotice(null);
-              }}
-              hitSlop={8}
-              style={{ alignSelf: 'center', paddingVertical: 8 }}
-            >
-              <Text style={{ fontFamily: fonts.bodySemi, fontSize: 16, color: colors.primary }}>
-                {mode === 'signIn' ? 'Forgot password?' : '← Back to sign in'}
-              </Text>
-            </Pressable>
-            <T muted small style={{ textAlign: 'center', marginTop: 16 }}>
-              Only the Bara platform owner can use this app. Restaurant managers use the Bara restaurant app.
-            </T>
+              {mode === 'reset' ? <TextLink label="← Back to sign in" onPress={() => switchTo('password')} /> : null}
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

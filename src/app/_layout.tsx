@@ -25,7 +25,7 @@ function Navigator() {
     );
   }
 
-  // Signed out, only the sign-in screen exists; signed in, only the app.
+  // Signed out, only the sign-in screens exist; signed in, only the app.
   return (
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
       <Stack.Protected guard={status === 'signedIn'}>
@@ -33,6 +33,7 @@ function Navigator() {
       </Stack.Protected>
       <Stack.Protected guard={status === 'signedOut'}>
         <Stack.Screen name="sign-in" />
+        <Stack.Screen name="verify-code" />
       </Stack.Protected>
     </Stack>
   );
