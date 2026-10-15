@@ -29,8 +29,28 @@ Built from the Figma section **"Bara SUPER ADMIN — Mobile app"** (page *Bara A
 | More | `/more/support` | Support inspection |
 | More | `/more/reports` | Platform reports |
 
+## Backend API
+
+The app talks to the Bara Django API (same backend as `bara-mobile`):
+`https://bara-backend-5g84.onrender.com/api` · docs at `/api/schema/swagger-ui/`.
+To use another server, copy `.env.example` to `.env` and change `EXPO_PUBLIC_API_URL`.
+
+| Feature | Endpoint | Status |
+| --- | --- | --- |
+| Sign in / stay signed in / sign out | `/auth/login/`, `/auth/refresh/`, `/auth/logout/` | Live |
+| Forgot password | `/auth/forgot-password/` | Live |
+| Requests list (payment confirmations) | `GET /payment-confirmations/` | Live |
+| Approve / reject a payment | `POST /payment-confirmations/{id}/approve/` · `/reject/` | Live |
+| Plan features on Review request | `GET /subscription-plans/` | Live |
+| Restaurants, Subscriptions, Support, Reports | — | Sample data (no endpoint yet, marked in the app) |
+
+Only Super Admin accounts can sign in: after login the app calls `/payment-confirmations/`,
+and a 403 means the account is a restaurant account.
+
+The Render server sleeps when idle, so the first request can take up to a minute.
+
 ## Notes
 
-- Data is mock data held in memory (`src/data/store.tsx`); it resets when the app reloads. Swap the store for API calls once the backend exists.
+- Screens without an API endpoint use sample data from `src/data/store.tsx`; it resets when the app reloads.
 - Colors and fonts (Ubuntu headings, Inter body) live in `src/theme.ts`, sampled from the Figma frames.
 - `archive/` holds earlier screens that were not in the Figma design. It is not part of the app.

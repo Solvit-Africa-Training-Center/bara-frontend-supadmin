@@ -39,7 +39,7 @@ export default function Subscription() {
   };
 
   return (
-    <AdminScreen title="Subscription & payment" back="More / Subscriptions">
+    <AdminScreen title="Subscription & payment" back="More / Subscriptions" demo>
       <Label>Selected tenant</Label>
       <Select value={r.id} options={restaurants.map((x) => ({ value: x.id, label: `${x.name} · #${x.code}` }))} onChange={pickTenant} />
       <Gap h={14} />

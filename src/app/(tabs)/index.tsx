@@ -1,47 +1,57 @@
 import { View } from 'react-native';
 import { router } from 'expo-router';
-import { AdminScreen, Btn, Card, H, LinkArrow, Pill, Row, T } from '@/components/ui';
+import { formatDateTime, paymentRef, usePayments } from '@/api/payments';
+import { AdminScreen, Btn, Card, H, LinkArrow, LoadState, Pill, Row, T, useOwnerName } from '@/components/ui';
 import { useStore } from '@/data/store';
 import { colors, fonts } from '@/theme';
 
+function greeting() {
+  const h = new Date().getHours();
+  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+}
+
 export default function Home() {
-  const { restaurants, requests, payments, session, lastActivity } = useStore();
+  const owner = useOwnerName();
+  const api = usePayments();
+  // Restaurants, renewals and support have no API endpoints yet; they still come from sample data.
+  const { restaurants, payments, session } = useStore();
   const active = restaurants.filter((r) => r.status === 'Active').length;
   const grace = restaurants.filter((r) => r.status === 'Grace').length;
   const overdue = restaurants.filter((r) => r.status !== 'Active').length;
-  const pending = requests.filter((r) => r.status === 'Pending');
+  const pending = api.payments.filter((p) => p.status === 'pending');
+  const lastDecision = api.payments.find((p) => p.verified_at);
 
-  const onboarding = pending.find((r) => r.kind === 'New restaurant');
   const renewal = payments.find((p) => !p.applied);
   const renewalTenant = restaurants.find((r) => r.id === renewal?.tenantId);
   const supportTenant = restaurants.find((r) => r.id === session.restaurantId);
 
   const attention = [
-    onboarding && {
-      key: 'req',
-      name: onboarding.restaurant,
-      detail: `${onboarding.id} · Onboarding · Payment verified`,
+    ...pending.slice(0, 3).map((p) => ({
+      key: p.id,
+      name: p.restaurant_name || p.payer_name,
+      detail: `${paymentRef(p)} · Payment submitted · ${formatDateTime(p.submitted_at)}`,
       action: 'Review',
-      go: () => router.push({ pathname: '/requests/[id]', params: { id: onboarding.id } }),
-    },
+      go: () => router.push({ pathname: '/requests/[id]', params: { id: p.id } }),
+    })),
     renewalTenant?.status === 'Grace' && {
       key: 'pay',
       name: renewalTenant.name,
-      detail: '4 days overdue · Renewal ready',
+      detail: '4 days overdue · Renewal ready · Sample',
       action: 'Payment',
       go: () => router.push({ pathname: '/more/subscriptions', params: { tenant: renewalTenant.id } }),
     },
     !session.resolved && {
       key: 'sup',
       name: supportTenant?.name ?? '',
-      detail: `${session.ticket} · Stock guidance needed`,
+      detail: `${session.ticket} · Stock guidance needed · Sample`,
       action: 'Support',
       go: () => router.push('/more/support'),
     },
   ].filter(Boolean) as { key: string; name: string; detail: string; action: string; go: () => void }[];
 
   return (
-    <AdminScreen title="Good morning, Derrick" showOwner>
+    <AdminScreen title={`${greeting()}, ${owner}`} showOwner refreshing={api.loading} onRefresh={api.reload}>
+      <LoadState loading={false} error={api.error} onRetry={api.reload} />
       <Row gap={14} style={{ marginBottom: 14, flexWrap: 'nowrap' }}>
         <Card style={{ flex: 1, marginBottom: 0 }}>
           <T muted>Active accounts</T>
@@ -49,12 +59,12 @@ export default function Home() {
             {active} / {restaurants.length}
           </T>
           <T muted small>
-            Plus {grace} in grace
+            Plus {grace} in grace · Sample
           </T>
         </Card>
         <Card style={{ flex: 1, marginBottom: 0 }}>
           <T muted>Pending requests</T>
-          <T style={{ fontFamily: fonts.heading, fontSize: 34, lineHeight: 45, marginVertical: 8 }}>{pending.length}</T>
+          <T style={{ fontFamily: fonts.heading, fontSize: 34, lineHeight: 45, marginVertical: 8 }}>{api.loading && api.payments.length === 0 ? '…' : pending.length}</T>
           <T muted small>
             Ready for your review
           </T>
@@ -84,7 +94,7 @@ export default function Home() {
         <H>Platform billing</H>
         <T style={{ fontFamily: fonts.bodySemi, fontSize: 18.5, marginBottom: 10 }}>RWF 220,000 received</T>
         <T muted style={{ marginBottom: 12 }}>
-          October to date · Sample subscription ledger. Not restaurant sales.
+          October to date · Sample data until the billing API is ready. Not restaurant sales.
         </T>
         <Row>
           <Pill label={`${overdue} overdue accounts`} tone="yellow" onPress={() => router.push('/restaurants')} />
@@ -99,7 +109,8 @@ export default function Home() {
         <Btn label="Reports" onPress={() => router.push('/more/reports')} />
       </Row>
       <T muted small>
-        Available from More · Owner session authenticated · Last activity: {lastActivity}
+        Available from More · Owner session authenticated
+        {lastDecision?.verified_at ? ` · Last decision: ${paymentRef(lastDecision)} at ${formatDateTime(lastDecision.verified_at)}` : ''}
       </T>
     </AdminScreen>
   );

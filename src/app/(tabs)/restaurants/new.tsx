@@ -16,7 +16,7 @@ export default function AddRestaurant() {
 
   if (!source) {
     return (
-      <AdminScreen title="Add restaurant & manager access" back="Restaurants">
+      <AdminScreen title="Add restaurant & manager access" back="Restaurants" demo>
         <InfoBox title="No verified onboarding request" tone="yellow">
           A restaurant is created from a paid onboarding request after its payment is verified. New requests appear in Requests.
         </InfoBox>
@@ -37,7 +37,7 @@ export default function AddRestaurant() {
   const p = source.payment!;
 
   return (
-    <AdminScreen title="Add restaurant & manager access" back="Restaurants">
+    <AdminScreen title="Add restaurant & manager access" back="Restaurants" demo>
       <Row style={{ marginBottom: 12 }} gap={14}>
         <Pill label="1 Details" tone="green" />
         <Pill label="2 Manager" tone="green" />

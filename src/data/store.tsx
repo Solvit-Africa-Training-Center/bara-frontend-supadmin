@@ -2,7 +2,6 @@ import { createContext, useContext, useState, type ReactNode } from 'react';
 
 // Demo data copied from the "Bara SUPER ADMIN — Mobile app" Figma frames.
 
-export const ownerLine = 'Derrick · Platform owner · 08 Oct 2026';
 
 export type Plan = 'BASIC' | 'PRO' | 'PREMIUM';
 export type Status = 'Active' | 'Grace' | 'Restricted' | 'Locked' | 'Archived';

@@ -28,7 +28,7 @@ export default function Restaurants() {
   );
 
   return (
-    <AdminScreen title="Restaurants" showOwner>
+    <AdminScreen title="Restaurants" showOwner demo>
       <Label>Search tenants</Label>
       <Row gap={14} style={{ flexWrap: 'nowrap', marginBottom: 14 }}>
         <Input style={{ flex: 1 }} placeholder="Name or manager..." value={query} onChangeText={setQuery} />

@@ -1,9 +1,11 @@
 import Feather from '@expo/vector-icons/Feather';
 import { useState, type ReactNode } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,21 +18,37 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { colors, fonts } from '@/theme';
-import { ownerLine, type Plan, planFeatures } from '@/data/store';
+import { useSession } from '@/api/session';
+import { type Plan, planFeatures } from '@/data/store';
 
 /* ---------- Screen frame: "BARA / PLATFORM ADMIN" header ---------- */
+
+const today = () => new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+export function useOwnerName() {
+  const { user } = useSession();
+  return user?.first_name || 'Owner';
+}
 
 export function AdminScreen({
   title,
   back,
   showOwner,
+  demo,
+  refreshing,
+  onRefresh,
   children,
 }: {
   title: string;
   back?: string;
   showOwner?: boolean;
+  /** Marks screens that still show sample data because the API has no endpoint for them yet. */
+  demo?: boolean;
+  refreshing?: boolean;
+  onRefresh?: () => void;
   children: ReactNode;
 }) {
+  const owner = useOwnerName();
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <View style={s.header}>
@@ -43,14 +61,74 @@ export function AdminScreen({
             </Pressable>
           ) : null}
           <Text style={s.title}>{title}</Text>
-          {showOwner ? <Text style={s.owner}>{ownerLine}</Text> : null}
+          {showOwner ? <Text style={s.owner}>{`${owner} · Platform owner · ${today()}`}</Text> : null}
+          {demo ? (
+            <View style={{ marginTop: 10 }}>
+              <Pill label="Sample data · Not connected to the API yet" tone="yellow" />
+            </View>
+          ) : null}
         </View>
       </View>
-      <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={s.content}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={colors.primary} /> : undefined}
+      >
         <View style={s.column}>{children}</View>
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+/* ---------- Bara logo (same mark as the bara-mobile app) ---------- */
+
+const BARS = [
+  { height: 15, color: '#C1440E', width: 12 },
+  { height: 26, color: '#E56A1C', width: 14 },
+  { height: 34, color: '#EA982C', width: 14 },
+  { height: 45, color: '#EBA529', width: 14 },
+];
+
+export function BaraLogo() {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+      <View>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 4, height: 45 }}>
+          {BARS.map((b) => (
+            <View key={b.color} style={{ width: b.width, height: b.height, backgroundColor: b.color, borderRadius: 4 }} />
+          ))}
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 }}>
+          <View style={{ width: 51, height: 4, borderRadius: 12, backgroundColor: colors.text }} />
+          <Feather name="check" size={14} color={colors.greenText} />
+        </View>
+      </View>
+      <Text style={{ fontFamily: fonts.heading, fontSize: 34, lineHeight: 40, color: '#9A3412' }}>Bara</Text>
+    </View>
+  );
+}
+
+/* ---------- Loading / error states for API data ---------- */
+
+export function LoadState({ loading, error, onRetry }: { loading: boolean; error: string | null; onRetry: () => void }) {
+  if (error) {
+    return (
+      <View style={{ backgroundColor: colors.redBg, borderRadius: 12, padding: 14, marginBottom: 14 }}>
+        <Text style={[s.infoTitle, { color: colors.redText }]}>Couldn’t load from the Bara server</Text>
+        <Text style={[s.infoBody, { marginBottom: 12 }]}>{error}</Text>
+        <Btn label="Try again" onPress={onRetry} />
+      </View>
+    );
+  }
+  if (loading) {
+    return (
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 14 }}>
+        <ActivityIndicator color={colors.primary} />
+        <Text style={[s.body, { color: colors.textMuted }]}>Loading from the Bara server…</Text>
+      </View>
+    );
+  }
+  return null;
 }
 
 /* ---------- Text ---------- */

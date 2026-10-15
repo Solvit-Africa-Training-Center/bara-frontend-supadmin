@@ -29,7 +29,7 @@ export default function RestaurantDetail() {
 
   if (!r) {
     return (
-      <AdminScreen title="Restaurant" back="Restaurants">
+      <AdminScreen title="Restaurant" back="Restaurants" demo>
         <T muted>Restaurant not found.</T>
       </AdminScreen>
     );
@@ -49,7 +49,7 @@ export default function RestaurantDetail() {
   };
 
   return (
-    <AdminScreen title={r.name} back="Restaurants">
+    <AdminScreen title={r.name} back="Restaurants" demo>
       <Row style={{ marginBottom: 14 }} gap={14}>
         <Pill label={r.status} tone={statusTone[r.status]} />
         <T muted>

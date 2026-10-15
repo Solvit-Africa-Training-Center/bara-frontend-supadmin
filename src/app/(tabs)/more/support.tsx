@@ -28,7 +28,7 @@ export default function SupportInspection() {
     }, 'Resolve');
 
   return (
-    <AdminScreen title="Support inspection" back="More / Support">
+    <AdminScreen title="Support inspection" back="More / Support" demo>
       <InfoBox title={session.resolved ? 'SUPPORT SESSION ENDED' : 'SUPPORT MODE · READ-ONLY'} tone="yellow">
         {`${r.name} · #${r.code} · Session ${session.id}\nAuthorized by ${session.authorizedBy} · Audited · ${session.window}`}
       </InfoBox>

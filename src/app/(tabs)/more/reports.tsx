@@ -28,7 +28,7 @@ export default function PlatformReports() {
   const max = Math.max(...months.map((x) => x.v));
 
   return (
-    <AdminScreen title="Platform reports" back="More / Reports">
+    <AdminScreen title="Platform reports" back="More / Reports" demo>
       <Label>Date range</Label>
       <Select value={range} options={[...ranges]} onChange={setRange} />
       <T muted small style={{ marginTop: 10, marginBottom: 14 }}>

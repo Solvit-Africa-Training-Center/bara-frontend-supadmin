@@ -7,10 +7,36 @@ import { Ubuntu_700Bold } from '@expo-google-fonts/ubuntu/700Bold';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { PaymentsProvider } from '@/api/payments';
+import { SessionProvider, useSession } from '@/api/session';
 import { StoreProvider } from '@/data/store';
 import { colors } from '@/theme';
+
+function Navigator() {
+  const { status } = useSession();
+
+  if (status === 'loading') {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={colors.primary} size="large" />
+      </View>
+    );
+  }
+
+  // Signed out, only the sign-in screen exists; signed in, only the app.
+  return (
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
+      <Stack.Protected guard={status === 'signedIn'}>
+        <Stack.Screen name="(tabs)" />
+      </Stack.Protected>
+      <Stack.Protected guard={status === 'signedOut'}>
+        <Stack.Screen name="sign-in" />
+      </Stack.Protected>
+    </Stack>
+  );
+}
 
 export default function RootLayout() {
   const [loaded] = useFonts({ Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, Ubuntu_500Medium, Ubuntu_700Bold });
@@ -19,10 +45,14 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <StoreProvider>
-        <StatusBar style="dark" />
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
-      </StoreProvider>
+      <SessionProvider>
+        <PaymentsProvider>
+          <StoreProvider>
+            <StatusBar style="dark" />
+            <Navigator />
+          </StoreProvider>
+        </PaymentsProvider>
+      </SessionProvider>
     </SafeAreaProvider>
   );
 }
