@@ -15,6 +15,8 @@ const RESEND_SECONDS = 30;
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'back'] as const;
 type Key = (typeof KEYS)[number];
 
+const clockTime = (date: Date) => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
 const initials = (text: string) =>
   text
     .split(/[\s@._-]+/)
@@ -35,6 +37,8 @@ export default function VerifyCode() {
   const [notice, setNotice] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(RESEND_SECONDS);
   const [resending, setResending] = useState(false);
+  // When the newest PIN was sent, so the owner can pick the right email (Gmail groups them in one thread).
+  const [sentAt, setSentAt] = useState(() => new Date());
   const submitting = useRef(false);
 
   // The name is only known for an owner who chose "Remember me" before.
@@ -109,7 +113,9 @@ export default function VerifyCode() {
     setError(null);
     setNotice(null);
     try {
-      setNotice(await requestLoginCode(email));
+      await requestLoginCode(email);
+      setSentAt(new Date());
+      setNotice('A new PIN is on its way. Your older PINs no longer work.');
       setPin('');
       setCooldown(RESEND_SECONDS);
     } catch (e) {
@@ -141,6 +147,13 @@ export default function VerifyCode() {
             <T muted style={{ textAlign: 'center', marginTop: 14 }}>
               Enter the {PIN_LENGTH}-digit admin PIN we emailed you to continue
             </T>
+            <View style={styles.hint}>
+              <Feather name="mail" size={16} color={colors.primary} style={{ marginTop: 2 }} />
+              <T small style={{ flex: 1 }}>
+                PIN sent at {clockTime(sentAt)}. Open the email "Your Bara login PIN" and use the newest one at the
+                bottom. Gmail keeps all PIN emails in one conversation. Not there? Check Spam.
+              </T>
+            </View>
           </View>
 
           <View style={styles.dots} accessible accessibilityLabel={`${pin.length} of ${PIN_LENGTH} digits entered`}>
@@ -234,5 +247,14 @@ const styles = StyleSheet.create({
   keyBlank: { backgroundColor: 'transparent', borderColor: 'transparent' },
   keyBack: { backgroundColor: colors.cardMuted },
   keyText: { fontFamily: fonts.body, fontSize: 26, color: colors.text },
+  hint: {
+    flexDirection: 'row',
+    gap: 8,
+    backgroundColor: colors.cardMuted,
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 14,
+    alignSelf: 'stretch',
+  },
   links: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
 });

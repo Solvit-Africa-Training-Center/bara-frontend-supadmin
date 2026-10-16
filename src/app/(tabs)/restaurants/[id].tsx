@@ -1,104 +1,111 @@
 import { useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
-import { AdminScreen, Btn, Card, confirm, Gap, H, InfoBox, Input, Label, notify, Pill, PlanFeatures, Row, Select, T } from '@/components/ui';
-import { firstName, statusTone, useStore, type Status } from '@/data/store';
+import type { RestaurantAction } from '@/api/admin';
+import { errorMessage } from '@/api/client';
+import { formatDateTime } from '@/api/payments';
+import { accountTone, managerName, placeOf, statusLabel, tierLabel, useRestaurants } from '@/api/restaurants';
+import type { AccountStatus } from '@/api/types';
+import { AdminScreen, Btn, Card, confirm, Gap, H, InfoBox, Input, Label, LoadState, notify, Pill, PlanFeatures, Row, Select, T } from '@/components/ui';
+import { firstName, type Plan } from '@/data/store';
 import { fonts } from '@/theme';
 
-const actions: { value: Status; label: string }[] = [
-  { value: 'Restricted', label: 'Restrict access' },
-  { value: 'Locked', label: 'Lock account' },
-  { value: 'Archived', label: 'Archive account' },
-  { value: 'Active', label: 'Reactivate account' },
+const actions: { value: RestaurantAction; label: string; result: AccountStatus; effect: string }[] = [
+  { value: 'restrict', label: 'Restrict access', result: 'restricted', effect: 'All tier tools become read-only until the account is reactivated.' },
+  { value: 'lock', label: 'Lock account', result: 'locked', effect: 'Staff cannot sign in until the account is reactivated.' },
+  { value: 'extend-grace', label: 'Extend grace period', result: 'grace', effect: 'The restaurant keeps access for a longer grace period while payment is sorted out.' },
+  { value: 'reactivate', label: 'Reactivate account', result: 'active', effect: 'Full tier access returns.' },
 ];
-
-const effect = (target: Status, manager: string) =>
-  ({
-    Restricted: `All tier tools become read-only. Confirm after review; notify ${manager} and log Derrick, reason and time.`,
-    Locked: `Staff cannot sign in until the account is reactivated. Notify ${manager} and log Derrick, reason and time.`,
-    Archived: `The tenant is hidden from daily operations and keeps its history. Notify ${manager} and log Derrick, reason and time.`,
-    Active: `Full tier access returns. Notify ${manager} and log Derrick, reason and time.`,
-    Grace: '',
-  })[target];
 
 export default function RestaurantDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { restaurants, setStatus } = useStore();
+  const { restaurants, loading, error, reload, changeStatus } = useRestaurants();
   const r = restaurants.find((x) => x.id === id);
-  const [action, setAction] = useState<Status>(r?.status === 'Active' ? 'Restricted' : 'Active');
+  const options = actions.filter((a) => a.result !== r?.account_status);
+  const [action, setAction] = useState<RestaurantAction>(r?.account_status === 'active' ? 'restrict' : 'reactivate');
   const [reason, setReason] = useState('');
+  const [saving, setSaving] = useState(false);
 
   if (!r) {
     return (
-      <AdminScreen title="Restaurant" back="Restaurants" demo>
-        <T muted>Restaurant not found.</T>
+      <AdminScreen title="Restaurant" back="Restaurants">
+        <LoadState loading={loading} error={error} onRetry={reload} />
+        {!loading && !error ? <T muted>Restaurant not found.</T> : null}
       </AdminScreen>
     );
   }
 
-  const options = actions.filter((a) => a.value !== r.status);
-  const paid = r.status === 'Active' || r.status === 'Grace';
+  const chosen = options.find((a) => a.value === action) ?? options[0];
+  const status = statusLabel[r.account_status] ?? r.account_status;
+  const plan = (r.subscription_tier?.toUpperCase() || 'BASIC') as Plan;
+  const manager = r.manager;
 
   const submit = () => {
     if (!reason.trim()) return notify('Reason required', 'Enter a reason before changing the account status.');
-    confirm(`${r.status} → ${action}`, effect(action, firstName(r.manager)), () => {
-      setStatus(r.id, action, reason.trim());
-      setReason('');
-      setAction(action === 'Active' ? 'Restricted' : 'Active');
-      notify('Status changed', `${r.name} is now ${action}. ${firstName(r.manager)} has been notified.`);
+    confirm(`${status} → ${statusLabel[chosen.result]}`, chosen.effect, async () => {
+      setSaving(true);
+      try {
+        const updated = await changeStatus(r.id, chosen.value, reason.trim());
+        setReason('');
+        setAction(updated.account_status === 'active' ? 'restrict' : 'reactivate');
+        notify('Status changed', `${r.name} is now ${statusLabel[updated.account_status] ?? updated.account_status}.`);
+      } catch (e) {
+        notify('Could not change status', errorMessage(e));
+      } finally {
+        setSaving(false);
+      }
     });
   };
 
   return (
-    <AdminScreen title={r.name} back="Restaurants" demo>
+    <AdminScreen title={r.name} back="Restaurants" refreshing={loading} onRefresh={reload}>
       <Row style={{ marginBottom: 14 }} gap={14}>
-        <Pill label={r.status} tone={statusTone[r.status]} />
+        <Pill label={status} tone={accountTone[r.account_status] ?? 'neutral'} />
         <T muted>
-          #{r.code} · {r.location}
+          #{r.code} · {placeOf(r)}
         </T>
       </Row>
 
       <Card>
         <H>Manager & access</H>
-        <T style={{ fontFamily: fonts.bodySemi, fontSize: 18.5, marginBottom: 10 }}>{r.manager} · Primary manager</T>
+        <T style={{ fontFamily: fonts.bodySemi, fontSize: 18.5, marginBottom: 10 }}>
+          {managerName(r)} · Primary manager
+        </T>
         <T style={{ marginBottom: 10 }}>
-          {r.email} · {r.phone}
+          {[manager?.email, manager?.phone_number || r.phone].filter(Boolean).join(' · ') || 'No contact details'}
         </T>
-        <T muted style={{ marginBottom: 14 }}>
-          {r.invitation} · This tenant only. No platform-admin permissions.
+        <T muted>
+          {manager ? (manager.is_active ? 'Manager account active' : 'Manager account inactive') : 'Restaurant phone shown'} · This tenant only. No platform-admin
+          permissions.
         </T>
-        <Btn label="Resend access instructions" onPress={() => notify('Access instructions sent', `${r.manager} will receive sign-in instructions at ${r.email}.`)} />
       </Card>
 
       <Card muted>
-        <H>Plan & validity</H>
-        <PlanFeatures plan={r.plan} />
-        <T style={{ fontFamily: fonts.bodySemi, fontSize: 18.5, marginTop: 6, marginBottom: 10 }}>Paid through {r.paidThrough}</T>
-        <T muted style={{ marginBottom: 14 }}>
-          {paid ? `Current paid account · Full ${r.plan} access` : `${r.status} account · ${r.plan} access suspended`}
+        <H>Plan & setup</H>
+        <PlanFeatures plan={plan} />
+        <T style={{ fontFamily: fonts.bodySemi, fontSize: 18.5, marginTop: 6, marginBottom: 10 }}>
+          {tierLabel(r)} plan · {status}
         </T>
-        <Btn label="Review subscription / payment" onPress={() => router.push({ pathname: '/more/subscriptions', params: { tenant: r.id } })} />
+        <T muted style={{ marginBottom: 14 }}>
+          {r.setup_completed ? 'Setup complete' : 'Setup not finished'} · Joined {formatDateTime(r.created_at)}
+        </T>
+        <Btn label="Review payment requests" onPress={() => router.push('/requests')} />
       </Card>
 
-      <Card>
-        <H>Operational summary</H>
-        <T style={{ marginBottom: 10 }}>{r.operations?.synced ?? `Last sync ${r.lastSync} · ${r.syncNote}`}</T>
-        <T style={{ marginBottom: 14 }}>{r.operations?.flags ?? 'No flags from synced summaries.'}</T>
-        <Btn label="Open read-only support" variant="primary" onPress={() => router.push({ pathname: '/more/support', params: { tenant: r.id } })} />
-      </Card>
-
-      <Card>
-        <H>Manage account status</H>
-        <Label>Action</Label>
-        <Select value={action} options={options} onChange={setAction} />
-        <Gap h={12} />
-        <Label>Reason · required</Label>
-        <Input placeholder="Manager-requested temporary review" value={reason} onChangeText={setReason} />
-        <Gap h={12} />
-        <InfoBox title={`${r.status} → ${action}`} tone="yellow">
-          {effect(action, firstName(r.manager))}
-        </InfoBox>
-        <Btn label="Review & confirm change" onPress={submit} />
-      </Card>
+      {options.length ? (
+        <Card>
+          <H>Manage account status</H>
+          <Label>Action</Label>
+          <Select value={chosen.value} options={options} onChange={setAction} />
+          <Gap h={12} />
+          <Label>Reason · required</Label>
+          <Input placeholder="Manager-requested temporary review" value={reason} onChangeText={setReason} />
+          <Gap h={12} />
+          <InfoBox title={`${status} → ${statusLabel[chosen.result]}`} tone="yellow">
+            {chosen.effect} {firstName(manager?.full_name || 'The manager')} will see the change on their next sign-in.
+          </InfoBox>
+          <Btn label={saving ? 'Saving…' : 'Review & confirm change'} onPress={saving ? () => {} : submit} />
+        </Card>
+      ) : null}
     </AdminScreen>
   );
 }

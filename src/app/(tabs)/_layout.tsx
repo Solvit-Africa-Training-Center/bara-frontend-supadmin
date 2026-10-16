@@ -2,12 +2,14 @@ import Feather from '@expo/vector-icons/Feather';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { Tabs } from 'expo-router';
 import type { ColorValue } from 'react-native';
+import { RestaurantsProvider } from '@/api/restaurants';
 import { colors, fonts } from '@/theme';
 
 type IconProps = { color: ColorValue };
 
 export default function TabLayout() {
   return (
+    <RestaurantsProvider>
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -26,5 +28,6 @@ export default function TabLayout() {
       <Tabs.Screen name="requests" options={{ title: 'Requests', tabBarIcon: ({ color }: IconProps) => <Feather name="inbox" size={23} color={color} /> }} />
       <Tabs.Screen name="more" options={{ title: 'More', tabBarIcon: ({ color }: IconProps) => <Feather name="more-horizontal" size={25} color={color} /> }} />
     </Tabs>
+    </RestaurantsProvider>
   );
 }

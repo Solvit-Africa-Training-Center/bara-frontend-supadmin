@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 import { router } from 'expo-router';
 import { formatDateTime, paymentRef, usePayments } from '@/api/payments';
+import { useRestaurants } from '@/api/restaurants';
 import { AdminScreen, Btn, Card, H, LinkArrow, LoadState, Pill, Row, T, useOwnerName } from '@/components/ui';
 import { useStore } from '@/data/store';
 import { colors, fonts } from '@/theme';
@@ -13,11 +14,12 @@ function greeting() {
 export default function Home() {
   const owner = useOwnerName();
   const api = usePayments();
-  // Restaurants, renewals and support have no API endpoints yet; they still come from sample data.
+  const live = useRestaurants();
+  // Renewals and support have no API endpoints yet; they still come from sample data.
   const { restaurants, payments, session } = useStore();
-  const active = restaurants.filter((r) => r.status === 'Active').length;
-  const grace = restaurants.filter((r) => r.status === 'Grace').length;
-  const overdue = restaurants.filter((r) => r.status !== 'Active').length;
+  const active = live.restaurants.filter((r) => r.account_status === 'active').length;
+  const grace = live.restaurants.filter((r) => r.account_status === 'grace').length;
+  const overdue = live.restaurants.length - active;
   const pending = api.payments.filter((p) => p.status === 'pending');
   const lastDecision = api.payments.find((p) => p.verified_at);
 
@@ -50,16 +52,16 @@ export default function Home() {
   ].filter(Boolean) as { key: string; name: string; detail: string; action: string; go: () => void }[];
 
   return (
-    <AdminScreen title={`${greeting()}, ${owner}`} showOwner refreshing={api.loading} onRefresh={api.reload}>
+    <AdminScreen title={`${greeting()}, ${owner}`} showOwner refreshing={api.loading || live.loading} onRefresh={() => Promise.all([api.reload(), live.reload()])}>
       <LoadState loading={false} error={api.error} onRetry={api.reload} />
       <Row gap={14} style={{ marginBottom: 14, flexWrap: 'nowrap' }}>
         <Card style={{ flex: 1, marginBottom: 0 }}>
           <T muted>Active accounts</T>
           <T style={{ fontFamily: fonts.heading, fontSize: 34, lineHeight: 45, marginVertical: 8 }}>
-            {active} / {restaurants.length}
+            {live.loading && live.restaurants.length === 0 ? '…' : `${active} / ${live.restaurants.length}`}
           </T>
           <T muted small>
-            Plus {grace} in grace · Sample
+            Plus {grace} in grace
           </T>
         </Card>
         <Card style={{ flex: 1, marginBottom: 0 }}>
@@ -97,7 +99,7 @@ export default function Home() {
           October to date · Sample data until the billing API is ready. Not restaurant sales.
         </T>
         <Row>
-          <Pill label={`${overdue} overdue accounts`} tone="yellow" onPress={() => router.push('/restaurants')} />
+          <Pill label={`${overdue} not active`} tone="yellow" onPress={() => router.push('/restaurants')} />
           <Pill label="2 support tickets" tone="plain" onPress={() => router.push('/more/support')} />
         </Row>
       </Card>

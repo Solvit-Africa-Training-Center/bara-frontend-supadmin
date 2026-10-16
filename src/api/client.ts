@@ -1,4 +1,6 @@
-import { API_URL, REQUEST_TIMEOUT_MS } from '@/api/config';
+import { Platform } from 'react-native';
+
+import { REQUEST_BASE_URL, REQUEST_TIMEOUT_MS } from '@/api/config';
 
 export type Tokens = { access: string; refresh: string };
 
@@ -37,7 +39,9 @@ async function send(path: string, init: RequestInit): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    return await fetch(`${API_URL}${path}`, { ...init, signal: controller.signal });
+    // Native apps skip ngrok's browser warning page with this header (ignored by other servers).
+    const headers = Platform.OS === 'web' ? init.headers : { ...init.headers, 'ngrok-skip-browser-warning': '1' };
+    return await fetch(`${REQUEST_BASE_URL}${path}`, { ...init, headers, signal: controller.signal });
   } catch {
     throw new ApiError(0, "Can't reach the Bara server. Check the internet connection and try again.");
   } finally {
@@ -64,6 +68,10 @@ function readMessage(body: unknown): string | undefined {
 }
 
 async function errorFrom(response: Response): Promise<ApiError> {
+  // ngrok answers for the backend when its tunnel is down (ERR_NGROK_3200 = endpoint offline).
+  if (response.headers.get('ngrok-error-code') === 'ERR_NGROK_3200') {
+    return new ApiError(0, 'The Bara server is offline right now. Please try again later.');
+  }
   let message =
     response.status >= 500
       ? 'The Bara server had a problem. Please try again in a moment.'

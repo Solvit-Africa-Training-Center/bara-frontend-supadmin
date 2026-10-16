@@ -41,3 +41,44 @@ export type SubscriptionPlan = {
   billing_period: string;
   features: string[];
 };
+
+export type AccountStatus = 'pending_payment' | 'active' | 'grace' | 'restricted' | 'locked' | 'archived';
+
+export type SuperAdminRestaurant = {
+  id: string;
+  name: string;
+  code: string;
+  phone: string;
+  city: string;
+  business_address: string;
+  subscription_tier: Tier;
+  account_status: AccountStatus;
+  setup_completed: boolean;
+  created_at: string;
+  /** The schema says string, but the backend sends the manager object (or null when there is none). */
+  manager: RestaurantManager | null;
+};
+
+export type RestaurantManager = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  email: string | null;
+  phone_number: string;
+  is_active: boolean;
+};
+
+export type SuperAdminManager = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  email: string | null;
+  phone_number: string;
+  is_active: boolean;
+  created_at: string;
+  restaurant_id: string;
+  restaurant_name: string;
+  restaurant_code: string;
+};
