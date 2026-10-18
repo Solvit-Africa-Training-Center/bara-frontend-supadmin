@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Bara Super Admin",
+    "name": "Bara Admin",
     "slug": "bara-super-admin",
     "version": "1.0.0",
     "orientation": "default",
@@ -22,7 +22,8 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.uburizasolutions.barasuperadmin"
     },
     "web": {
       "favicon": "./assets/favicon.png",
