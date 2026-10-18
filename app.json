@@ -3,7 +3,7 @@
     "name": "Bara Super Admin",
     "slug": "bara-super-admin",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
