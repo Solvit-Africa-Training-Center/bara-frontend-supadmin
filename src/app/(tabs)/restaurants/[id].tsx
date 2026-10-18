@@ -67,10 +67,10 @@ export default function RestaurantDetail() {
 
       <Card>
         <H>Manager & access</H>
-        <T style={{ fontFamily: fonts.bodySemi, fontSize: 18.5, marginBottom: 10 }}>
+        <T style={{ fontFamily: fonts.bodySemi, fontSize: 15.5, marginBottom: 8 }}>
           {managerName(r)} · Primary manager
         </T>
-        <T style={{ marginBottom: 10 }}>
+        <T style={{ marginBottom: 8 }}>
           {[manager?.email, manager?.phone_number || r.phone].filter(Boolean).join(' · ') || 'No contact details'}
         </T>
         <T muted>
@@ -82,10 +82,10 @@ export default function RestaurantDetail() {
       <Card muted>
         <H>Plan & setup</H>
         <PlanFeatures plan={plan} />
-        <T style={{ fontFamily: fonts.bodySemi, fontSize: 18.5, marginTop: 6, marginBottom: 10 }}>
+        <T style={{ fontFamily: fonts.bodySemi, fontSize: 15.5, marginTop: 6, marginBottom: 8 }}>
           {tierLabel(r)} plan · {status}
         </T>
-        <T muted style={{ marginBottom: 14 }}>
+        <T muted style={{ marginBottom: 12 }}>
           {r.setup_completed ? 'Setup complete' : 'Setup not finished'} · Joined {formatDateTime(r.created_at)}
         </T>
         <Btn label="Review payment requests" onPress={() => router.push('/requests')} />

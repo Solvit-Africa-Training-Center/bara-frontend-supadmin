@@ -9,7 +9,7 @@ export default function SupportInspection() {
   const { session, restaurants, sendGuidance, resolveSession } = useStore();
   const r = restaurants.find((x) => x.id === session.restaurantId)!;
   const manager = firstName(r.manager);
-  const [reply, setReply] = useState('Compare Tuesday’s oil issues with recipe portions and wastage notes before correcting stock.');
+  const [reply, setReply] = useState('');
 
   const exit = () => router.back();
 
@@ -44,18 +44,18 @@ export default function SupportInspection() {
         <H>{session.topic}</H>
         {session.messages.map((m, i) =>
           m.from === 'Derrick' ? (
-            <View key={i} style={{ backgroundColor: colors.greenBg, borderRadius: 10, padding: 14, marginTop: 6, marginBottom: 6 }}>
-              <T style={{ fontFamily: fonts.bodySemi, fontSize: 18.5, marginBottom: 6 }}>
+            <View key={i} style={{ backgroundColor: colors.greenBg, borderRadius: 10, padding: 12, marginTop: 6, marginBottom: 6 }}>
+              <T style={{ fontFamily: fonts.bodySemi, fontSize: 14.5, marginBottom: 4 }}>
                 {m.from} · {m.time}
               </T>
               <T>{m.text}</T>
             </View>
           ) : (
             <View key={i} style={{ marginBottom: 10 }}>
-              <T style={{ fontFamily: fonts.bodySemi, fontSize: 18.5, marginBottom: 10 }}>
+              <T style={{ fontFamily: fonts.bodySemi, fontSize: 14.5, marginBottom: 4 }}>
                 {m.from} · {m.time}
               </T>
-              <T style={{ fontSize: 17.5, lineHeight: 26.5 }}>{m.text}</T>
+              <T style={{ fontSize: 13.5, lineHeight: 19 }}>{m.text}</T>
             </View>
           ),
         )}
@@ -63,7 +63,7 @@ export default function SupportInspection() {
 
       <Card muted>
         <H>Operational / sync summary</H>
-        <T style={{ fontSize: 17.5, lineHeight: 26.5, marginBottom: 12 }}>● {session.summary}</T>
+        <T style={{ fontSize: 13.5, lineHeight: 19, marginBottom: 8 }}>● {session.summary}</T>
         <T muted>Flags need review, not automatic corrections. Summaries are scoped to this tenant only.</T>
       </Card>
 
@@ -71,7 +71,13 @@ export default function SupportInspection() {
         <Card>
           <H>Send guidance</H>
           <Label>Reply to {manager}</Label>
-          <Input value={reply} onChangeText={setReply} multiline style={{ minHeight: 84, textAlignVertical: 'top' }} />
+          <Input
+            value={reply}
+            onChangeText={setReply}
+            placeholder={`Type guidance to send to ${manager}...`}
+            multiline
+            style={{ minHeight: 84, textAlignVertical: 'top' }}
+          />
           <Gap h={14} />
           <Btn label="Send help" variant="primary" onPress={send} />
           <Gap h={12} />

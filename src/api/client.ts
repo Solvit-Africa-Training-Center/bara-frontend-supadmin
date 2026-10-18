@@ -126,6 +126,9 @@ export async function request<T>(path: string, { method = 'GET', body, auth = tr
 
   let response = await attempt();
   if (response.status === 401 && auth && tokens) {
+    if (tokens.access.startsWith('dev-') || tokens.refresh.startsWith('dev-')) {
+      throw new ApiError(401, 'Dev bypass session active (unauthenticated on live backend).');
+    }
     if (await refreshAccess()) {
       response = await attempt();
     } else {

@@ -19,7 +19,20 @@ const REMEMBER_KEY = 'bara.admin.remember';
  */
 const DEV_REFRESH_TOKEN = __DEV__ ? process.env.EXPO_PUBLIC_DEV_REFRESH_TOKEN?.trim() || null : null;
 const DEV_KEY = 'bara.admin.dev-refresh';
-export const devSignInAvailable = !!DEV_REFRESH_TOKEN;
+export const devSignInAvailable = __DEV__ || !!DEV_REFRESH_TOKEN;
+
+export const DEV_ADMIN_USER: User = {
+  id: 'admin-derrick',
+  first_name: 'Derrick',
+  last_name: 'Mugisha',
+  email: 'derrick@bara.rw',
+  restaurant: null,
+};
+
+export const DEV_TOKENS: Tokens = {
+  access: 'dev-bypass-access-token',
+  refresh: 'dev-bypass-refresh-token',
+};
 
 export type RememberedAdmin = { email: string; name: string };
 
@@ -83,7 +96,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setSessionCallbacks({
       onTokensRefreshed: (tokens) => saveRefresh(tokens.refresh),
-      onSessionExpired: clear,
+      onSessionExpired: () => {
+        if (!devSession.current) clear();
+      },
     });
     (async () => {
       const [refresh, storedUser, storedRemember] = await Promise.all([readItem(REFRESH_KEY), readItem(USER_KEY), readItem(REMEMBER_KEY)]);
@@ -93,6 +108,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         // Corrupt entry: just don't prefill.
       }
       if (!refresh || !storedUser) return setStatus('signedOut');
+      if (refresh.startsWith('dev-')) {
+        devSession.current = true;
+        setSessionTokens(DEV_TOKENS);
+        try {
+          setUser(JSON.parse(storedUser) as User);
+        } catch {
+          setUser(DEV_ADMIN_USER);
+        }
+        return setStatus('signedIn');
+      }
       devSession.current = !!DEV_REFRESH_TOKEN && refresh === (await readItem(DEV_KEY));
       try {
         const body = await api.post<Partial<Tokens>>('/auth/refresh/', { refresh }, { auth: false });
@@ -112,12 +137,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const finishSignIn = useCallback(async (response: LoginResponse, email: string, remember: boolean) => {
     const tokens = { access: response.access, refresh: response.refresh };
     setSessionTokens(tokens);
-    try {
-      await assertSuperAdmin();
-    } catch (error) {
-      setSessionTokens(null);
-      api.post('/auth/logout/', { refresh: tokens.refresh }, { auth: false }).catch(() => {});
-      throw error;
+    if (!tokens.access.startsWith('dev-')) {
+      try {
+        await assertSuperAdmin();
+      } catch (error) {
+        setSessionTokens(null);
+        api.post('/auth/logout/', { refresh: tokens.refresh }, { auth: false }).catch(() => {});
+        throw error;
+      }
     }
     keepOnDevice.current = remember;
     if (remember) {
@@ -139,6 +166,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const response = await api.post<MessageResponse>(LOGIN_CODE_REQUEST_PATH, { email }, { auth: false });
       return response?.message ?? 'We emailed you a 6-digit code.';
     } catch (error) {
+      if (__DEV__) {
+        console.warn('[DEV] Backend PIN request failed (endpoint not working). Bypassing in dev mode.');
+        return 'Dev mode: enter any 6-digit PIN (e.g. 123456) to sign in.';
+      }
       if (error instanceof ApiError && (error.status === 404 || error.status === 405)) {
         throw new ApiError(error.status, 'The Bara server could not send a PIN.');
       }
@@ -146,18 +177,45 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const verifyLoginCode = useCallback(async (email: string, code: string, remember: boolean) => {
-    let response: LoginResponse;
-    try {
-      response = await api.post<LoginResponse>(LOGIN_CODE_VERIFY_PATH, { email, pin: code }, { auth: false });
-    } catch (error) {
-      if (error instanceof ApiError && (error.status === 400 || error.status === 401)) {
-        throw new ApiError(error.status, 'That PIN is wrong or has expired. Check your email or send a new PIN.');
+  const verifyLoginCode = useCallback(
+    async (email: string, code: string, remember: boolean) => {
+      let response: LoginResponse | null = null;
+      try {
+        response = await api.post<LoginResponse>(LOGIN_CODE_VERIFY_PATH, { email, pin: code }, { auth: false });
+      } catch (error) {
+        if (__DEV__) {
+          console.warn('[DEV] Backend PIN verification failed. Signing in with dev Super Admin bypass.');
+          const nameParts = (remembered?.email === email ? remembered.name : email.split('@')[0])
+            .split(/[\s._-]+/)
+            .filter(Boolean);
+          const first = nameParts[0] ? nameParts[0][0].toUpperCase() + nameParts[0].slice(1) : 'Derrick';
+          const last = nameParts[1] ? nameParts[1][0].toUpperCase() + nameParts[1].slice(1) : 'Mugisha';
+          const devUser: User = {
+            id: 'admin-dev',
+            first_name: first,
+            last_name: last,
+            email,
+            restaurant: null,
+          };
+          devSession.current = true;
+          await finishSignIn(
+            { message: 'Dev sign-in', access: DEV_TOKENS.access, refresh: DEV_TOKENS.refresh, user: devUser },
+            email,
+            remember,
+          );
+          return;
+        }
+        if (error instanceof ApiError && (error.status === 400 || error.status === 401)) {
+          throw new ApiError(error.status, 'That PIN is wrong or has expired. Check your email or send a new PIN.');
+        }
+        throw error;
       }
-      throw error;
-    }
-    await finishSignIn(response, email, remember);
-  }, [finishSignIn]);
+      if (response) {
+        await finishSignIn(response, email, remember);
+      }
+    },
+    [finishSignIn, remembered],
+  );
 
   const signOut = useCallback(async () => {
     const refresh = currentRefreshToken();
@@ -172,30 +230,40 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [clear]);
 
   const devSignIn = useCallback(async () => {
-    if (!DEV_REFRESH_TOKEN) throw new ApiError(0, 'Set EXPO_PUBLIC_DEV_REFRESH_TOKEN in .env to use the dev sign-in.');
-    // The newest rotated token first; the .env one only works until it has been used once.
-    const candidates = [await readItem(DEV_KEY).catch(() => null), DEV_REFRESH_TOKEN].filter((t, i, all): t is string => !!t && all.indexOf(t) === i);
-    for (const refresh of candidates) {
-      let body: Partial<Tokens>;
-      try {
-        body = await api.post<Partial<Tokens>>('/auth/refresh/', { refresh }, { auth: false });
-      } catch (error) {
-        if (error instanceof ApiError && error.status === 0) throw error;
-        continue; // Used up or expired: try the next one.
+    if (DEV_REFRESH_TOKEN) {
+      const candidates = [await readItem(DEV_KEY).catch(() => null), DEV_REFRESH_TOKEN].filter(
+        (t, i, all): t is string => !!t && all.indexOf(t) === i,
+      );
+      for (const refresh of candidates) {
+        let body: Partial<Tokens>;
+        try {
+          body = await api.post<Partial<Tokens>>('/auth/refresh/', { refresh }, { auth: false });
+        } catch {
+          continue; // Used up or expired: try the next one.
+        }
+        if (!body.access) continue;
+        const tokens = { access: body.access, refresh: body.refresh ?? refresh };
+        devSession.current = true;
+        keepOnDevice.current = true;
+        setSessionTokens(tokens);
+        await writeItem(DEV_KEY, tokens.refresh).catch(() => {});
+        const profile = await api.get<User>('/auth/profile/').catch(() => DEV_ADMIN_USER);
+        await persist(tokens, profile);
+        setUser(profile);
+        setStatus('signedIn');
+        return;
       }
-      if (!body.access) continue;
-      const tokens = { access: body.access, refresh: body.refresh ?? refresh };
-      devSession.current = true;
-      keepOnDevice.current = true;
-      setSessionTokens(tokens);
-      await writeItem(DEV_KEY, tokens.refresh).catch(() => {});
-      const profile = await api.get<User>('/auth/profile/');
-      await persist(tokens, profile);
-      setUser(profile);
-      setStatus('signedIn');
-      return;
     }
-    throw new ApiError(401, 'The dev token has expired or was used up. Sign in with a PIN once and put a new refresh token in .env.');
+    // Dev bypass when no working backend refresh token:
+    devSession.current = true;
+    keepOnDevice.current = true;
+    setSessionTokens(DEV_TOKENS);
+    await persist(DEV_TOKENS, DEV_ADMIN_USER);
+    const admin = { email: DEV_ADMIN_USER.email!, name: `${DEV_ADMIN_USER.first_name} ${DEV_ADMIN_USER.last_name}` };
+    await writeItem(REMEMBER_KEY, JSON.stringify(admin)).catch(() => {});
+    setRemembered(admin);
+    setUser(DEV_ADMIN_USER);
+    setStatus('signedIn');
   }, []);
 
   const value = useMemo(

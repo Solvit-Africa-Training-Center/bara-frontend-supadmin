@@ -6,6 +6,12 @@
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "primaryColor": "#FAF3E7",
+    "androidStatusBar": {
+      "barStyle": "dark-content",
+      "backgroundColor": "#FAF3E7",
+      "translucent": true
+    },
     "ios": {
       "supportsTablet": true
     },

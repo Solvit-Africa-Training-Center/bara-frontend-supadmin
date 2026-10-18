@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { AdminScreen, Btn, Card, confirm, Gap, H, InfoBox, Input, Label, notify, Pill, PlanFeatures, Row, Select, T } from '@/components/ui';
+import { AdminScreen, Btn, Card, confirm, DateRangePicker, type DateRangeValue, Gap, H, InfoBox, Input, Label, notify, Pill, PlanFeatures, Row, Select, T } from '@/components/ui';
 import { firstName, rwf, statusTone, useStore, type Plan } from '@/data/store';
 import { fonts } from '@/theme';
 
@@ -18,9 +18,11 @@ export default function Subscription() {
   const r = restaurants.find((x) => x.id === tenantId) ?? restaurants[0];
   const payment = payments.find((p) => p.tenantId === r.id);
   const [plan, setPlan] = useState<Plan>(r.plan);
-  const [start, setStart] = useState('05 Oct 2026');
-  const [through, setThrough] = useState('04 Nov 2026');
-  const [reason, setReason] = useState('Verified renewal payment');
+  const [period, setPeriod] = useState<DateRangeValue>({
+    startDate: new Date(2026, 9, 5),
+    endDate: new Date(2026, 10, 4),
+  });
+  const [reason, setReason] = useState('');
 
   const name = firstName(r.manager);
   const ready = payment && !payment.applied;
@@ -30,10 +32,12 @@ export default function Subscription() {
     setPlan(restaurants.find((x) => x.id === id)?.plan ?? 'PRO');
   };
 
+  const throughFormatted = period.endDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
   const activate = () => {
-    if (!reason.trim()) return notify('Reason required', 'Enter a reason before applying the payment.');
-    confirm('Confirm payment & activate?', `Full ${plan} access through ${through}. ${name} receives email + in-app confirmation.`, () => {
-      applyPayment(r.id, plan, through);
+    const finalReason = reason.trim() || 'Verified renewal payment';
+    confirm('Confirm payment & activate?', `Full ${plan} access through ${throughFormatted} (${finalReason}). ${name} receives email + in-app confirmation.`, () => {
+      applyPayment(r.id, plan, throughFormatted);
       notify('Payment applied', `“Payment applied. ${r.name} is Active.” ${name} is notified and ${payment!.reference} is marked used.`);
     });
   };
@@ -62,10 +66,10 @@ export default function Subscription() {
           <View style={{ marginBottom: 12 }}>
             <Pill label={payment.applied ? 'Verified · Applied' : 'Verified · Not yet applied'} tone="green" />
           </View>
-          <T style={{ fontFamily: fonts.bodyBold, fontSize: 20, marginBottom: 10 }}>
+          <T style={{ fontFamily: fonts.bodyBold, fontSize: 17, marginBottom: 8 }}>
             {payment.reference} · {rwf(payment.amount)}
           </T>
-          <T style={{ marginBottom: 12 }}>
+          <T style={{ marginBottom: 10 }}>
             {payment.method} {payment.note}
           </T>
           <T muted small>
@@ -85,24 +89,30 @@ export default function Subscription() {
             <Label>Plan</Label>
             <Select value={plan} options={plans} onChange={setPlan} />
             <Gap h={12} />
-            <Row gap={14} style={{ flexWrap: 'nowrap', marginBottom: 14 }}>
-              <View style={{ flex: 1 }}>
-                <Label>Start</Label>
-                <Input value={start} onChangeText={setStart} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Label>Paid through</Label>
-                <Input value={through} onChangeText={setThrough} />
-              </View>
+            <Label>Paid period</Label>
+            <DateRangePicker
+              startDate={period.startDate}
+              endDate={period.endDate}
+              onChange={setPeriod}
+              presets={[
+                { label: '30 Days (1 Month)', startDate: new Date(2026, 9, 5), endDate: new Date(2026, 10, 4) },
+                { label: '90 Days (3 Months)', startDate: new Date(2026, 9, 5), endDate: new Date(2027, 0, 3) },
+                { label: '1 Year', startDate: new Date(2026, 9, 5), endDate: new Date(2027, 9, 5) },
+              ]}
+            />
+            <Row gap={8} style={{ marginTop: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+              <Pill label="+30 days" tone="neutral" onPress={() => setPeriod({ startDate: new Date(2026, 9, 5), endDate: new Date(2026, 10, 4) })} />
+              <Pill label="+90 days" tone="neutral" onPress={() => setPeriod({ startDate: new Date(2026, 9, 5), endDate: new Date(2027, 0, 3) })} />
+              <Pill label="+1 year" tone="neutral" onPress={() => setPeriod({ startDate: new Date(2026, 9, 5), endDate: new Date(2027, 9, 5) })} />
             </Row>
             <PlanFeatures plan={plan} />
             <Gap h={6} />
             <Label>Reason</Label>
-            <Input value={reason} onChangeText={setReason} />
+            <Input value={reason} onChangeText={setReason} placeholder="Verified renewal payment" />
           </Card>
 
           <InfoBox title={`Review outcome · ${r.status} → Active`}>
-            Full {plan} access through {through.replace(' 2026', '')}. Reminders stop. {name} receives email + in-app confirmation. Derrick, reference, reason and dates are logged.
+            Full {plan} access through {throughFormatted}. Reminders stop. {name} receives email + in-app confirmation. Derrick, reference, reason and dates are logged.
           </InfoBox>
           <Btn label="Confirm payment & activate" variant="primary" onPress={activate} />
           <Gap h={14} />

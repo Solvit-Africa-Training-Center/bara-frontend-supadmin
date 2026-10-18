@@ -4,34 +4,27 @@ import { View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { errorMessage } from '@/api/client';
 import { formatDate, formatDateTime, paymentRef, usePayments } from '@/api/payments';
-import { AdminScreen, Btn, Card, confirm, Gap, H, InfoBox, Input, Label, notify, Pill, Row, T } from '@/components/ui';
+import { AdminScreen, Btn, Card, confirm, DateRangePicker, type DateRangeValue, Gap, H, InfoBox, Input, Label, notify, Pill, Row, T } from '@/components/ui';
 import { colors, fonts } from '@/theme';
 
-const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 const addDays = (d: Date, days: number) => new Date(d.getTime() + days * 86_400_000);
-
-/** Parses "2026-10-15" as a local date; null when the text is not a real date. */
-function parseDay(text: string): Date | null {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text.trim());
-  if (!m) return null;
-  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  return d.getMonth() === Number(m[2]) - 1 ? d : null;
-}
 
 const statusPill = { pending: ['Pending', 'yellow'], paid: ['Approved', 'green'], rejected: ['Rejected', 'red'] } as const;
 
 export default function ReviewRequest() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { payments, plans, approve, reject } = usePayments();
+  const { payments, plans, loading, reload, approve, reject } = usePayments();
   const p = payments.find((x) => x.id === id);
-  const [start, setStart] = useState(isoDay(new Date()));
-  const [end, setEnd] = useState(isoDay(addDays(new Date(), 30)));
+  const [period, setPeriod] = useState<DateRangeValue>({
+    startDate: new Date(),
+    endDate: addDays(new Date(), 30),
+  });
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState<'approve' | 'reject' | null>(null);
 
   if (!p) {
     return (
-      <AdminScreen title="Review request" back="Requests">
+      <AdminScreen title="Review request" back="Requests" refreshing={loading} onRefresh={reload}>
         <T muted>This request is no longer available. Go back and pull down to refresh the list.</T>
       </AdminScreen>
     );
@@ -39,20 +32,16 @@ export default function ReviewRequest() {
 
   const name = p.restaurant_name || p.payer_name;
   const plan = p.tier ? plans.find((x) => x.name.toLowerCase() === p.tier) : undefined;
-  const startDate = parseDay(start);
-  const endDate = parseDay(end);
-  const datesOk = !!startDate && !!endDate && endDate > startDate;
   const decided = p.status !== 'pending';
 
   const doApprove = () => {
-    if (!datesOk) return notify('Check the dates', 'Use the format YYYY-MM-DD, and the end date must be after the start date.');
     confirm(
       'Approve & activate?',
-      `${name}'s subscription becomes active from ${formatDate(startDate!)} to ${formatDate(endDate!)}.`,
+      `${name}'s subscription becomes active from ${formatDate(period.startDate)} to ${formatDate(period.endDate)}.`,
       async () => {
         setBusy('approve');
         try {
-          await approve(p.id, startDate!, endDate!);
+          await approve(p.id, period.startDate, period.endDate);
           notify('Payment approved', `${name}'s subscription is now active.`);
           router.back();
         } catch (e) {
@@ -87,7 +76,7 @@ export default function ReviewRequest() {
   };
 
   return (
-    <AdminScreen title="Review request" back="Requests">
+    <AdminScreen title="Review request" back="Requests" refreshing={loading} onRefresh={reload}>
       <Row gap={14} style={{ marginBottom: 14 }}>
         <Pill label={`${paymentRef(p)} · ${statusPill[p.status][0]}`} tone={statusPill[p.status][1]} />
         <T muted>{formatDateTime(p.submitted_at)}</T>
@@ -143,27 +132,26 @@ export default function ReviewRequest() {
         <>
           <Card muted>
             <H>Subscription period</H>
-            <Row gap={14} style={{ flexWrap: 'nowrap' }}>
-              <View style={{ flex: 1 }}>
-                <Label>Starts</Label>
-                <Input value={start} onChangeText={setStart} placeholder="YYYY-MM-DD" autoCapitalize="none" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Label>Paid through</Label>
-                <Input value={end} onChangeText={setEnd} placeholder="YYYY-MM-DD" autoCapitalize="none" />
-              </View>
+            <DateRangePicker
+              startDate={period.startDate}
+              endDate={period.endDate}
+              onChange={setPeriod}
+              presets={[
+                { label: '30 Days (1 Month)', startDate: new Date(), endDate: addDays(new Date(), 30) },
+                { label: '90 Days (3 Months)', startDate: new Date(), endDate: addDays(new Date(), 90) },
+                { label: '180 Days (6 Months)', startDate: new Date(), endDate: addDays(new Date(), 180) },
+                { label: '365 Days (1 Year)', startDate: new Date(), endDate: addDays(new Date(), 365) },
+              ]}
+            />
+            <Row gap={8} style={{ marginTop: 10, flexWrap: 'wrap' }}>
+              <Pill label="+30 days" tone="neutral" onPress={() => setPeriod({ startDate: new Date(), endDate: addDays(new Date(), 30) })} />
+              <Pill label="+90 days" tone="neutral" onPress={() => setPeriod({ startDate: new Date(), endDate: addDays(new Date(), 90) })} />
+              <Pill label="+1 year" tone="neutral" onPress={() => setPeriod({ startDate: new Date(), endDate: addDays(new Date(), 365) })} />
             </Row>
-            {!datesOk ? (
-              <T small style={{ color: colors.redText, marginTop: 8 }}>
-                Use YYYY-MM-DD; the end date must be after the start date.
-              </T>
-            ) : null}
           </Card>
 
           <InfoBox title="On approval">
-            {datesOk
-              ? `The subscription becomes active from ${formatDate(startDate!)} to ${formatDate(endDate!)} and the restaurant gets its paid access.`
-              : 'Set valid dates to see the result.'}
+            {`The subscription becomes active from ${formatDate(period.startDate)} to ${formatDate(period.endDate)} and the restaurant gets its paid access.`}
           </InfoBox>
           <Btn label={busy === 'approve' ? 'Approving…' : 'Approve & activate'} variant="primary" disabled={!!busy} onPress={doApprove} />
           <Gap h={14} />

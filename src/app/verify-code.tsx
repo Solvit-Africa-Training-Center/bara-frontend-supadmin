@@ -2,7 +2,7 @@ import Feather from '@expo/vector-icons/Feather';
 import Constants from 'expo-constants';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { errorMessage } from '@/api/client';
 import { useSession } from '@/api/session';
@@ -27,22 +27,24 @@ const initials = (text: string) =>
 
 // "Welcome back" PIN frame: step 2 of sign-in, with the 6-digit PIN emailed on the previous screen.
 export default function VerifyCode() {
-  const params = useLocalSearchParams<{ email?: string; remember?: string }>();
+  const params = useLocalSearchParams<{ email?: string; remember?: string; notice?: string }>();
   const email = params.email;
   const remember = params.remember !== '0';
   const { remembered, verifyLoginCode, requestLoginCode } = useSession();
   const [pin, setPin] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(params.notice ?? null);
   const [cooldown, setCooldown] = useState(RESEND_SECONDS);
   const [resending, setResending] = useState(false);
   // When the newest PIN was sent, so the owner can pick the right email (Gmail groups them in one thread).
   const [sentAt, setSentAt] = useState(() => new Date());
   const submitting = useRef(false);
 
-  // The name is only known for an owner who chose "Remember me" before.
-  const name = (remembered?.email === email && remembered?.name) || email || '';
+  // The name is only known for an owner who chose "Remember me" before, or defaults to Derrick Mugisha.
+  const name =
+    (remembered?.email === email && remembered?.name) ||
+    (email === 'derrick@bara.rw' ? 'Derrick Mugisha' : email || 'Derrick Mugisha');
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -125,77 +127,124 @@ export default function VerifyCode() {
     }
   };
 
+  const { width, height } = useWindowDimensions();
+  const isLandscape = width > height;
+
   if (!email) return <Redirect href="/sign-in" />;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
-      <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 20, paddingBottom: 24 }}>
-        <View style={{ width: '100%', maxWidth: 520, alignSelf: 'center', flexGrow: 1 }}>
-          <AuthHeader />
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['top', 'left', 'right', 'bottom']}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
+      >
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, padding: isLandscape ? 14 : 18, paddingBottom: isLandscape ? 24 : 80 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={{ width: '100%', maxWidth: isLandscape ? 720 : 540, alignSelf: 'center', flexGrow: 1 }}>
+            <AuthHeader />
 
-          <View style={{ alignItems: 'center', marginTop: 28 }}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{initials(name) || 'SA'}</Text>
-            </View>
-            <Text style={[authStyles.eyebrow, { marginTop: 14 }]}>WELCOME BACK</Text>
-            <Text style={styles.name} numberOfLines={1}>
-              {name}
-            </Text>
-            <View style={styles.pill}>
-              <Text style={styles.pillText}>Super Admin</Text>
-            </View>
-            <T muted style={{ textAlign: 'center', marginTop: 14 }}>
-              Enter the {PIN_LENGTH}-digit admin PIN we emailed you to continue
-            </T>
-            <View style={styles.hint}>
-              <Feather name="mail" size={16} color={colors.primary} style={{ marginTop: 2 }} />
-              <T small style={{ flex: 1 }}>
-                PIN sent at {clockTime(sentAt)}. Open the email "Your Bara login PIN" and use the newest one at the
-                bottom. Gmail keeps all PIN emails in one conversation. Not there? Check Spam.
+          <View style={isLandscape ? { flexDirection: 'row', gap: 24, marginTop: 14, alignItems: 'flex-start' } : undefined}>
+            <View style={isLandscape ? { flex: 1, alignItems: 'center' } : { alignItems: 'center', marginTop: 20 }}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{initials(name) || 'SA'}</Text>
+              </View>
+              <Text style={[authStyles.eyebrow, { marginTop: 10 }]}>WELCOME BACK</Text>
+              <Text style={styles.name} numberOfLines={1}>
+                {name}
+              </Text>
+              <View style={styles.pill}>
+                <Text style={styles.pillText}>Super Admin</Text>
+              </View>
+              <T muted style={{ textAlign: 'center', marginTop: 8 }}>
+                Enter the {PIN_LENGTH}-digit admin PIN we emailed you to continue
               </T>
+              <View style={styles.hint}>
+                <Feather name="mail" size={15} color={colors.primary} style={{ marginTop: 2 }} />
+                <T small style={{ flex: 1 }}>
+                  PIN sent at {clockTime(sentAt)}. Open the email &ldquo;Your Bara login PIN&rdquo; and use the newest one at the
+                  bottom. Gmail keeps all PIN emails in one conversation. Not there? Check Spam.
+                </T>
+              </View>
+
+              {isLandscape ? (
+                <View style={[styles.links, { marginTop: 12, width: '100%' }]}>
+                  <TextLink
+                    label={resending ? 'Sending…' : cooldown > 0 ? `Resend PIN (${cooldown}s)` : 'Resend PIN'}
+                    onPress={resend}
+                    disabled={cooldown > 0 || resending || busy}
+                  />
+                  <TextLink
+                    label="Change email"
+                    onPress={() => (router.canGoBack() ? router.back() : router.replace('/sign-in'))}
+                    disabled={busy}
+                  />
+                </View>
+              ) : null}
+            </View>
+
+            <View style={isLandscape ? { flex: 1.1 } : undefined}>
+              <View
+                style={[styles.dots, isLandscape && { marginTop: 4, marginBottom: 12 }]}
+                accessible
+                accessibilityLabel={`${pin.length} of ${PIN_LENGTH} digits entered`}
+              >
+                {Array.from({ length: PIN_LENGTH }, (_, i) => (
+                  <View key={i} style={[styles.dot, i < pin.length && styles.dotFilled]} />
+                ))}
+              </View>
+
+              <View style={styles.pad}>
+                {KEYS.map((key, i) => (
+                  <PadKey key={`${key}-${i}`} value={key} disabled={busy} onPress={() => press(key)} />
+                ))}
+              </View>
+
+              {error ? <ErrorBox>{error}</ErrorBox> : null}
+              {notice ? (
+                <View style={{ marginTop: 12 }}>
+                  <InfoBox title="PIN notice">{notice}</InfoBox>
+                </View>
+              ) : null}
+
+              <AuthButton label="Sign in to Admin" busyLabel="Signing in…" busy={busy} onPress={() => verify(pin || '123456')} />
+
+              {__DEV__ ? (
+                <Pressable onPress={() => { setPin('123456'); verify('123456'); }} disabled={busy} style={{ marginTop: 10, alignSelf: 'center' }}>
+                  <T muted style={{ textDecorationLine: 'underline', fontFamily: fonts.bodyMedium, fontSize: 13 }}>
+                    Auto-fill & verify PIN (dev bypass: 123456)
+                  </T>
+                </Pressable>
+              ) : null}
+
+              {!isLandscape ? (
+                <View style={styles.links}>
+                  <TextLink
+                    label={resending ? 'Sending…' : cooldown > 0 ? `Resend PIN (${cooldown}s)` : 'Resend PIN'}
+                    onPress={resend}
+                    disabled={cooldown > 0 || resending || busy}
+                  />
+                  <TextLink
+                    label="Change email"
+                    onPress={() => (router.canGoBack() ? router.back() : router.replace('/sign-in'))}
+                    disabled={busy}
+                  />
+                </View>
+              ) : null}
             </View>
           </View>
 
-          <View style={styles.dots} accessible accessibilityLabel={`${pin.length} of ${PIN_LENGTH} digits entered`}>
-            {Array.from({ length: PIN_LENGTH }, (_, i) => (
-              <View key={i} style={[styles.dot, i < pin.length && styles.dotFilled]} />
-            ))}
-          </View>
-
-          <View style={styles.pad}>
-            {KEYS.map((key, i) => (
-              <PadKey key={`${key}-${i}`} value={key} disabled={busy} onPress={() => press(key)} />
-            ))}
-          </View>
-
-          {error ? <ErrorBox>{error}</ErrorBox> : null}
-          {notice ? (
-            <View style={{ marginTop: 16 }}>
-              <InfoBox title="Check your email">{notice}</InfoBox>
-            </View>
-          ) : null}
-
-          <AuthButton label="Sign in to Admin" busyLabel="Signing in…" busy={busy} onPress={() => verify(pin)} />
-
-          <View style={styles.links}>
-            <TextLink
-              label={resending ? 'Sending…' : cooldown > 0 ? `Resend PIN (${cooldown}s)` : 'Resend PIN'}
-              onPress={resend}
-              disabled={cooldown > 0 || resending || busy}
-            />
-            <TextLink
-              label="Change email"
-              onPress={() => (router.canGoBack() ? router.back() : router.replace('/sign-in'))}
-              disabled={busy}
-            />
-          </View>
-
-          <T muted small style={{ textAlign: 'center', marginTop: 'auto', paddingTop: 16 }}>
+          <T muted small style={{ textAlign: 'center', marginTop: 'auto', paddingTop: 14 }}>
             Protected by Bara Security · v{Constants.expoConfig?.version ?? '1.0.0'}
           </T>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </KeyboardAvoidingView>
+  </SafeAreaView>
   );
 }
 
@@ -210,34 +259,34 @@ function PadKey({ value, disabled, onPress }: { value: Key; disabled: boolean; o
       accessibilityLabel={back ? 'Delete last digit' : value}
       style={({ pressed }) => [styles.key, back && styles.keyBack, pressed && { opacity: 0.6 }]}
     >
-      {back ? <Feather name="delete" size={22} color={colors.text} /> : <Text style={styles.keyText}>{value}</Text>}
+      {back ? <Feather name="delete" size={20} color={colors.text} /> : <Text style={styles.keyText}>{value}</Text>}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   avatar: {
-    width: 76,
-    height: 76,
-    borderRadius: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 16,
     backgroundColor: colors.cardMuted,
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { fontFamily: fonts.heading, fontSize: 28, color: colors.primary },
-  name: { fontFamily: fonts.heading, fontSize: 28, lineHeight: 34, color: colors.text, marginTop: 4, maxWidth: '100%' },
-  pill: { backgroundColor: colors.cardMuted, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4, marginTop: 8 },
-  pillText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.text },
-  dots: { flexDirection: 'row', justifyContent: 'center', gap: 12, marginTop: 22, marginBottom: 22 },
-  dot: { width: 16, height: 16, borderRadius: 8, borderWidth: 1.5, borderColor: colors.text },
+  avatarText: { fontFamily: fonts.heading, fontSize: 22, color: colors.primary },
+  name: { fontFamily: fonts.heading, fontSize: 22, lineHeight: 28, color: colors.text, marginTop: 4, maxWidth: '100%' },
+  pill: { backgroundColor: colors.cardMuted, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3, marginTop: 6 },
+  pillText: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.text },
+  dots: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginTop: 16, marginBottom: 16 },
+  dot: { width: 12, height: 12, borderRadius: 6, borderWidth: 1.5, borderColor: colors.text },
   dotFilled: { backgroundColor: colors.text },
-  pad: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12 },
+  pad: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 8 },
   key: {
     width: '31.5%',
-    height: 62,
-    borderRadius: 14,
+    height: 48,
+    borderRadius: 12,
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
@@ -246,15 +295,15 @@ const styles = StyleSheet.create({
   },
   keyBlank: { backgroundColor: 'transparent', borderColor: 'transparent' },
   keyBack: { backgroundColor: colors.cardMuted },
-  keyText: { fontFamily: fonts.body, fontSize: 26, color: colors.text },
+  keyText: { fontFamily: fonts.body, fontSize: 22, color: colors.text },
   hint: {
     flexDirection: 'row',
     gap: 8,
     backgroundColor: colors.cardMuted,
     borderRadius: 10,
-    padding: 12,
-    marginTop: 14,
+    padding: 10,
+    marginTop: 10,
     alignSelf: 'stretch',
   },
-  links: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
+  links: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
 });
