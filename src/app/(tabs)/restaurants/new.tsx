@@ -1,108 +1,148 @@
-import { useState } from 'react';
-import { View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { Pressable } from 'react-native';
 import { router } from 'expo-router';
-import { AdminScreen, Btn, Card, Gap, H, InfoBox, Input, Label, notify, Pill, PlanFeatures, Row, T } from '@/components/ui';
-import { firstName, rwf, useStore } from '@/data/store';
+import { listOnboardingRequests } from '@/api/admin';
+import { errorMessage } from '@/api/client';
+import { usePayments } from '@/api/payments';
+import { useRestaurants } from '@/api/restaurants';
+import type { OnboardingRequest, Tier } from '@/api/types';
+import { AdminScreen, Btn, Card, confirm, Gap, H, Input, Label, LoadState, notify, PlanFeatures, Select, T } from '@/components/ui';
+
+const requestStatus = {
+  pending: 'Pending',
+  in_progress: 'In progress',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+} as const;
 
 export default function AddRestaurant() {
-  const { requests, createFromRequest } = useStore();
-  // The Figma flow creates tenants from a verified onboarding request.
-  const source = requests.find((r) => r.kind === 'New restaurant' && r.status === 'Pending');
-
+  const { createRestaurant } = useRestaurants();
+  const { plans, loading: loadingPlans, error: planError, reload: reloadPlans } = usePayments();
+  const [requests, setRequests] = useState<OnboardingRequest[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(true);
+  const [requestError, setRequestError] = useState<string | null>(null);
   const [name, setName] = useState('');
-  const [location, setLocation] = useState('');
-  const [manager, setManager] = useState('');
-  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [phone, setPhone] = useState('');
+  const [city, setCity] = useState('');
+  const [address, setAddress] = useState('');
+  const [tier, setTier] = useState<Tier>('basic');
+  const [saving, setSaving] = useState(false);
 
-  if (!source) {
-    return (
-      <AdminScreen title="Add restaurant & manager access" back="Restaurants" demo>
-        <InfoBox title="No verified onboarding request" tone="yellow">
-          A restaurant is created from a paid onboarding request after its payment is verified. New requests appear in Requests.
-        </InfoBox>
-        <Btn label="Go to Requests" onPress={() => router.push('/requests')} />
-      </AdminScreen>
-    );
-  }
-
-  const create = () => {
-    const finalName = name.trim();
-    const finalLocation = location.trim();
-    const finalManager = manager.trim();
-    const finalEmail = email.trim();
-    if (!finalName) return notify('Restaurant name required', 'Enter the restaurant name.');
-    if (!finalLocation) return notify('Location required', 'Enter the restaurant location.');
-    if (!finalManager) return notify('Manager required', 'Enter the primary manager name.');
-    if (!finalEmail || !/^\S+@\S+\.\S+$/.test(finalEmail)) {
-      return notify('Valid email required', 'Enter a valid invitation email.');
+  const loadRequests = useCallback(async () => {
+    setLoadingRequests(true);
+    try {
+      setRequests(await listOnboardingRequests());
+      setRequestError(null);
+    } catch (error) {
+      setRequestError(errorMessage(error));
+    } finally {
+      setLoadingRequests(false);
     }
-    const created = createFromRequest(source.id, { name: finalName, location: finalLocation, manager: finalManager, email: finalEmail });
-    notify('Restaurant created', `${created.name} is Active. ${firstName(created.manager)} will receive access instructions by email.`);
-    router.replace({ pathname: '/restaurants/[id]', params: { id: created.id } });
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void loadRequests();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [loadRequests]);
+
+  const selectedPlan = plans.find((plan) => plan.tier === tier) ?? plans[0];
+
+  const submit = () => {
+    const restaurantName = name.trim();
+    const restaurantCode = code.trim().toUpperCase();
+    const restaurantCity = city.trim();
+    const businessAddress = address.trim();
+    if (!restaurantName) return notify('Restaurant name required', 'Enter the restaurant name.');
+    if (!/^[A-Z0-9-]+$/.test(restaurantCode)) {
+      return notify('Invalid restaurant code', 'Use only letters, numbers, and hyphens for the short code.');
+    }
+    if (!restaurantCity) return notify('City required', 'Enter the restaurant city.');
+    if (!businessAddress) return notify('Address required', 'Enter the business address.');
+    if (!plans.length) return notify('Plans unavailable', 'Load the subscription plans before creating a restaurant.');
+
+    confirm('Create restaurant?', `${restaurantName} will be created with the ${tier.toUpperCase()} tier. The API does not create a manager account or invitation.`, async () => {
+      setSaving(true);
+      try {
+        const created = await createRestaurant({
+          name: restaurantName,
+          code: restaurantCode,
+          phone: phone.trim(),
+          city: restaurantCity,
+          business_address: businessAddress,
+          subscription_tier: tier,
+        });
+        notify('Restaurant created', `${created.name} was created. Manager setup is not provided by this API.`);
+        router.replace({ pathname: '/restaurants/[id]', params: { id: created.id } });
+      } catch (error) {
+        notify('Could not create restaurant', errorMessage(error));
+      } finally {
+        setSaving(false);
+      }
+    }, 'Create');
   };
 
-  const p = source.payment!;
+  const refresh = async () => {
+    await Promise.all([loadRequests(), reloadPlans()]);
+  };
 
   return (
-    <AdminScreen title="Add restaurant & manager access" back="Restaurants" demo>
-      <Row style={{ marginBottom: 12 }} gap={14}>
-        <Pill label="1 Details" tone="green" />
-        <Pill label="2 Manager" tone="green" />
-        <Pill label="3 Paid access" tone="green" />
-      </Row>
-
+    <AdminScreen title="Add restaurant" back="Restaurants" refreshing={loadingRequests || loadingPlans || saving} onRefresh={refresh}>
       <Card>
-        <H>Restaurant</H>
+        <H>Restaurant details</H>
         <Label>Restaurant name</Label>
         <Input value={name} onChangeText={setName} placeholder="e.g. Nyamirambo Kitchen" />
         <Gap h={12} />
-        <Label>One location</Label>
-        <Input value={location} onChangeText={setLocation} placeholder="e.g. KN 7 Ave, Kigali" />
+        <Label>Short code</Label>
+        <Input value={code} onChangeText={setCode} placeholder="e.g. RW-448" autoCapitalize="characters" />
+        <Gap h={12} />
+        <Label>Phone</Label>
+        <Input value={phone} onChangeText={setPhone} placeholder="+250..." keyboardType="phone-pad" />
+        <Gap h={12} />
+        <Label>City</Label>
+        <Input value={city} onChangeText={setCity} placeholder="Kigali" />
+        <Gap h={12} />
+        <Label>Business address</Label>
+        <Input value={address} onChangeText={setAddress} placeholder="District, street, or area" />
       </Card>
 
       <Card>
-        <H>Primary manager</H>
-        <Label>Full name</Label>
-        <Input value={manager} onChangeText={setManager} placeholder="e.g. Jeanette Uwase" />
-        <Gap h={12} />
-        <Label>Invitation email</Label>
-        <Input
-          value={email}
-          onChangeText={setEmail}
-          placeholder="manager@restaurant.rw"
-          autoCapitalize="none"
-          keyboardType="email-address"
+        <H>Subscription tier</H>
+        <Select
+          value={tier}
+          options={plans.map((plan) => ({ value: plan.tier, label: `${plan.name} · ${plan.currency} ${plan.price.toLocaleString('en-US')} / ${plan.billing_period}` }))}
+          onChange={setTier}
         />
+        {selectedPlan ? <PlanFeatures plan={selectedPlan.name} features={selectedPlan.features} /> : null}
+        <LoadState loading={loadingPlans && plans.length === 0} error={planError} onRetry={reloadPlans} />
       </Card>
 
-      <Card muted>
-        <H>Paid access review</H>
-        <Row style={{ marginBottom: 12 }} gap={14}>
-          <Pill label={`${p.reference} · ${p.verified ? 'Verified' : 'Not verified'}`} tone={p.verified ? 'green' : 'yellow'} />
-          <Pill label={source.plan} tone="plain" />
-        </Row>
-        <T style={{ marginBottom: 12 }}>MTN Mobile Money · {rwf(p.amount)} (sample)</T>
-        <Row gap={10} style={{ flexWrap: 'nowrap', marginBottom: 12 }}>
-          <View style={{ flex: 1 }}>
-            <Label>Starts</Label>
-            <Input value={source.period?.start} editable={false} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Label>Paid through</Label>
-            <Input value={source.period?.end} editable={false} />
-          </View>
-        </Row>
-        <PlanFeatures plan={source.plan} />
-        <T style={{ marginTop: 6 }}>Result: Active · Manager can use {name.trim() || 'the restaurant'} only. No AI or platform access.</T>
-      </Card>
+      <ManagerSetupNote />
+      <Btn label={saving ? 'Creating…' : 'Create restaurant'} variant="primary" disabled={saving || loadingPlans || !plans.length} onPress={submit} />
 
-      <InfoBox title="Ready to invite">
-        Payment, manager and duplicate checks passed. Creates one tenant and logs Derrick’s action. Secure invitation expires in 72 hours.
-      </InfoBox>
-      <Btn label="Create restaurant & send invite" variant="primary" onPress={create} />
-      <T muted small style={{ marginTop: 12 }}>
-        {firstName(manager.trim() || 'Manager')} will receive access instructions by email. Sample payment is not an official plan price.
-      </T>
+      <Card style={{ marginTop: 16 }}>
+        <H>Onboarding requests</H>
+        <T muted small style={{ marginBottom: 10 }}>Open a request to review its details or cancel it while it is still pending. Approval is not available here.</T>
+        <LoadState loading={loadingRequests} error={requestError} onRetry={loadRequests} />
+        {requests.map((request) => (
+          <Pressable key={request.id} onPress={() => router.push({ pathname: '/restaurants/onboarding/[id]', params: { id: request.id } })}>
+            <T style={{ marginBottom: 10 }} strong>{request.restaurant_name} · {requestStatus[request.status]}</T>
+            <T muted small style={{ marginBottom: 12 }}>{request.fee.toLocaleString('en-US')} RWF · View request</T>
+          </Pressable>
+        ))}
+        {!loadingRequests && !requestError && requests.length === 0 ? <T muted>No onboarding requests returned by the server.</T> : null}
+      </Card>
     </AdminScreen>
+  );
+}
+
+function ManagerSetupNote() {
+  return (
+    <Card muted>
+      <H>Manager setup</H>
+        <T>The API can create a restaurant record, but cannot create a manager account or send an invitation. Existing manager accounts can be reviewed from More → Managers.</T>
+    </Card>
   );
 }

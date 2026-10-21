@@ -13,7 +13,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { CustomAlertProvider } from '@/components/alert';
 import { PaymentsProvider } from '@/api/payments';
 import { SessionProvider, useSession } from '@/api/session';
-import { StoreProvider } from '@/data/store';
 import { colors } from '@/theme';
 
 function Navigator() {
@@ -62,13 +61,11 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <SessionProvider>
         <PaymentsProvider>
-          <StoreProvider>
-            <CustomAlertProvider>
-              <StatusBar style="dark" />
-              {Platform.OS === 'android' ? <RNStatusBar backgroundColor={colors.bg} translucent barStyle="dark-content" /> : null}
-              <Navigator />
-            </CustomAlertProvider>
-          </StoreProvider>
+          <CustomAlertProvider>
+            <StatusBar style="dark" />
+            {Platform.OS === 'android' ? <RNStatusBar backgroundColor={colors.bg} translucent barStyle="dark-content" /> : null}
+            <Navigator />
+          </CustomAlertProvider>
         </PaymentsProvider>
       </SessionProvider>
     </SafeAreaProvider>

@@ -35,11 +35,33 @@ export type PaymentConfirmation = {
 };
 
 export type SubscriptionPlan = {
+  tier: Tier;
   name: string;
   price: number;
   currency: string;
   billing_period: string;
   features: string[];
+};
+
+export type OnboardingRequestStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
+
+export type OnboardingRequest = {
+  id: string;
+  restaurant_name: string;
+  subscription: string;
+  fee: number;
+  status: OnboardingRequestStatus;
+  created_at: string;
+  updated_at: string;
+};
+
+export type RestaurantCreateInput = {
+  name: string;
+  code: string;
+  phone: string;
+  city: string;
+  business_address: string;
+  subscription_tier: Tier;
 };
 
 export type AccountStatus = 'pending_payment' | 'active' | 'grace' | 'restricted' | 'locked' | 'archived';

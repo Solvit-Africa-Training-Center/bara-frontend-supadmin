@@ -20,7 +20,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { colors, fonts } from '@/theme';
 import { useSession } from '@/api/session';
-import { type Plan, planFeatures } from '@/data/store';
 
 /* ---------- Screen frame: "BARA / PLATFORM ADMIN" header ---------- */
 
@@ -36,7 +35,6 @@ export function AdminScreen({
   back,
   showOwner,
   showEyebrow,
-  demo,
   refreshing,
   onRefresh,
   scroll = true,
@@ -46,8 +44,6 @@ export function AdminScreen({
   back?: string;
   showOwner?: boolean;
   showEyebrow?: boolean;
-  /** Marks screens that still show sample data because the API has no endpoint for them yet. */
-  demo?: boolean;
   refreshing?: boolean;
   onRefresh?: () => void;
   scroll?: boolean;
@@ -62,7 +58,7 @@ export function AdminScreen({
     <SafeAreaView style={s.safe} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
       >
         <View style={s.header}>
@@ -87,11 +83,6 @@ export function AdminScreen({
               <Text style={s.title}>{title}</Text>
             )}
             {showOwner ? <Text style={s.owner}>{`${owner} · Platform owner · ${today()}`}</Text> : null}
-            {demo ? (
-              <View style={{ marginTop: 8 }}>
-                <Pill label="Sample data · Not connected to the API yet" tone="yellow" />
-              </View>
-            ) : null}
           </View>
         </View>
         {scroll ? (
@@ -334,14 +325,14 @@ export function Select<V extends string>({ value, options, onChange }: { value: 
 
 /* ---------- Plan feature list (PREMIUM / PRO / BASIC) ---------- */
 
-export function PlanFeatures({ plan }: { plan: Plan }) {
+export function PlanFeatures({ plan, features }: { plan: string; features: string[] }) {
   return (
     <View>
-      <Text style={s.planName}>{plan}</Text>
-      {planFeatures(plan).map((f) => (
-        <View key={f.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 }}>
-          {f.included ? <Feather name="check" size={14} color={colors.text} /> : <Text style={s.body}>—</Text>}
-          <Text style={s.body}>{f.included ? f.label : `No ${f.label}`}</Text>
+      <Text style={s.planName}>{plan.toUpperCase()}</Text>
+      {features.map((feature) => (
+        <View key={feature} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 }}>
+          <Feather name="check" size={14} color={colors.text} />
+          <Text style={s.body}>{feature}</Text>
         </View>
       ))}
     </View>

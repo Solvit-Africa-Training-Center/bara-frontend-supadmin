@@ -1,5 +1,12 @@
 import { api } from '@/api/client';
-import type { PaymentConfirmation, SubscriptionPlan, SuperAdminManager, SuperAdminRestaurant } from '@/api/types';
+import type {
+  OnboardingRequest,
+  PaymentConfirmation,
+  RestaurantCreateInput,
+  SubscriptionPlan,
+  SuperAdminManager,
+  SuperAdminRestaurant,
+} from '@/api/types';
 
 // Super Admin endpoints of the Bara API.
 
@@ -18,6 +25,12 @@ export const rejectPayment = (id: string, reason: string) =>
 export const listPlans = () => api.get<SubscriptionPlan[]>('/restaurant/subscription-plans/');
 
 export const listRestaurants = () => api.get<SuperAdminRestaurant[]>('/super-admin/restaurants/');
+export const getRestaurant = (id: string) => api.get<SuperAdminRestaurant>(`/super-admin/restaurants/${encodeURIComponent(id)}/`);
+
+export const createRestaurant = (restaurant: RestaurantCreateInput) =>
+  api.post<SuperAdminRestaurant>('/super-admin/restaurants/', restaurant);
+
+export const listOnboardingRequests = () => api.get<OnboardingRequest[]>('/restaurant/onboarding-requests/');
 
 export type RestaurantAction = 'restrict' | 'lock' | 'reactivate' | 'extend-grace';
 
@@ -28,3 +41,11 @@ export const changeRestaurantStatus = (id: string, action: RestaurantAction, rea
 /** Managers whose restaurant name, code or own details match `search`. */
 export const listManagers = (search: string) =>
   api.get<SuperAdminManager[]>(`/super-admin/managers/?search=${encodeURIComponent(search)}`);
+
+export const getManager = (id: string) => api.get<SuperAdminManager>(`/super-admin/managers/${encodeURIComponent(id)}/`);
+
+export const getOnboardingRequest = (id: string) =>
+  api.get<OnboardingRequest>(`/restaurant/onboarding-requests/${encodeURIComponent(id)}/`);
+
+export const cancelOnboardingRequest = (id: string) =>
+  api.post<OnboardingRequest>(`/restaurant/onboarding-requests/${encodeURIComponent(id)}/cancel/`, {});

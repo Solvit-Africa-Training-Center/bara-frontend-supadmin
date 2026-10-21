@@ -37,20 +37,27 @@ To use another server, copy `.env.example` to `.env` and change `EXPO_PUBLIC_API
 
 | Feature | Endpoint | Status |
 | --- | --- | --- |
-| Sign in / stay signed in / sign out | `/auth/login/`, `/auth/refresh/`, `/auth/logout/` | Live |
-| Forgot password | `/auth/forgot-password/` | Live |
-| Requests list (payment confirmations) | `GET /payment-confirmations/` | Live |
-| Approve / reject a payment | `POST /payment-confirmations/{id}/approve/` · `/reject/` | Live |
-| Plan features on Review request | `GET /subscription-plans/` | Live |
-| Restaurants, Subscriptions, Support, Reports | — | Sample data (no endpoint yet, marked in the app) |
+| PIN sign-in / stay signed in / sign out | `/auth/admin/request-pin/`, `/auth/admin/verify-pin/`, `/auth/refresh/`, `/auth/logout/` | Live |
+| Requests list (payment confirmations) | `GET /restaurant/payment-confirmations/` | Live |
+| Approve / reject a payment | `POST /restaurant/payment-confirmations/{id}/approve/` · `/reject/` | Live |
+| Subscription plan catalog | `GET /restaurant/subscription-plans/` | Live |
+| Restaurants and account status actions | `/super-admin/restaurants/` and `/super-admin/restaurants/{id}/{action}/` | Live |
+| Restaurant onboarding requests | `GET /restaurant/onboarding-requests/` | Live, read-only for Super Admin |
+| Subscription overview | Restaurants, plan catalog, and payment confirmations | Live |
+| Reports | Live restaurant, plan, and payment counts | Live overview; no platform billing totals |
+| Support tickets and sessions | — | Not available in the current API |
 
-Only Super Admin accounts can sign in: after login the app calls `/payment-confirmations/`,
-and a 403 means the account is a restaurant account.
+Only Super Admin accounts can sign in: after login the app calls `/restaurant/payment-confirmations/`,
+and a 403 means the account is a restaurant account. Live API requests show errors instead of falling
+back to sample records when the backend is unavailable.
 
 The Render server sleeps when idle, so the first request can take up to a minute.
 
 ## Notes
 
-- Screens without an API endpoint use sample data from `src/data/store.tsx`; it resets when the app reloads.
+- Restaurant creation creates a restaurant record only. The current API does not create a manager account or send an invitation.
+- Onboarding requests are listed for visibility; the API does not expose a Super Admin approval action.
+- The reports overview uses live restaurant, plan, and payment-confirmation data. The API does not expose platform billing totals, revenue history, or operational flags.
+- Support is not connected because the API does not expose support tickets, inspection sessions, or messaging.
 - Colors and fonts (Ubuntu headings, Inter body) live in `src/theme.ts`, sampled from the Figma frames.
 - `archive/` holds earlier screens that were not in the Figma design. It is not part of the app.

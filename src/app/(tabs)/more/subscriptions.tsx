@@ -1,129 +1,75 @@
-import { useState } from 'react';
 import { View } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
-import { AdminScreen, Btn, Card, confirm, DateRangePicker, type DateRangeValue, Gap, H, InfoBox, Input, Label, notify, Pill, PlanFeatures, Row, Select, T } from '@/components/ui';
-import { firstName, rwf, statusTone, useStore, type Plan } from '@/data/store';
-import { fonts } from '@/theme';
-
-const plans: { value: Plan; label: string }[] = [
-  { value: 'BASIC', label: 'BASIC' },
-  { value: 'PRO', label: 'PRO' },
-  { value: 'PREMIUM', label: 'PREMIUM' },
-];
+import { router } from 'expo-router';
+import { formatDateTime, paymentRef, usePayments } from '@/api/payments';
+import { accountTone, statusLabel, useRestaurants } from '@/api/restaurants';
+import { AdminScreen, Btn, Card, H, LoadState, Pill, Row, T } from '@/components/ui';
 
 export default function Subscription() {
-  const params = useLocalSearchParams<{ tenant?: string }>();
-  const { restaurants, payments, applyPayment } = useStore();
-  const [tenantId, setTenantId] = useState(params.tenant ?? payments.find((p) => !p.applied)?.tenantId ?? restaurants[0].id);
-  const r = restaurants.find((x) => x.id === tenantId) ?? restaurants[0];
-  const payment = payments.find((p) => p.tenantId === r.id);
-  const [plan, setPlan] = useState<Plan>(r.plan);
-  const [period, setPeriod] = useState<DateRangeValue>({
-    startDate: new Date(2026, 9, 5),
-    endDate: new Date(2026, 10, 4),
-  });
-  const [reason, setReason] = useState('');
-
-  const name = firstName(r.manager);
-  const ready = payment && !payment.applied;
-
-  const pickTenant = (id: string) => {
-    setTenantId(id);
-    setPlan(restaurants.find((x) => x.id === id)?.plan ?? 'PRO');
-  };
-
-  const throughFormatted = period.endDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-
-  const activate = () => {
-    const finalReason = reason.trim() || 'Verified renewal payment';
-    confirm('Confirm payment & activate?', `Full ${plan} access through ${throughFormatted} (${finalReason}). ${name} receives email + in-app confirmation.`, () => {
-      applyPayment(r.id, plan, throughFormatted);
-      notify('Payment applied', `“Payment applied. ${r.name} is Active.” ${name} is notified and ${payment!.reference} is marked used.`);
-    });
-  };
+  const api = usePayments();
+  const live = useRestaurants();
+  const refreshing = api.loading || live.loading;
+  const reload = () => Promise.all([api.reload(), live.reload()]).then(() => undefined);
+  const pending = api.payments.filter((payment) => payment.status === 'pending');
 
   return (
-    <AdminScreen title="Subscription & payment" back="More / Subscriptions" demo>
-      <Label>Selected tenant</Label>
-      <Select value={r.id} options={restaurants.map((x) => ({ value: x.id, label: `${x.name} · #${x.code}` }))} onChange={pickTenant} />
-      <Gap h={14} />
+    <AdminScreen title="Subscriptions & payments" back="More / Subscriptions" refreshing={refreshing} onRefresh={reload}>
+      <LoadState loading={api.loading && api.payments.length === 0} error={api.error} onRetry={api.reload} />
+      <LoadState loading={live.loading && live.restaurants.length === 0} error={live.error} onRetry={live.reload} />
 
       <Card>
-        <H>Current access</H>
-        <Row gap={14} style={{ marginBottom: 12 }}>
-          <Pill label={r.plan} tone="neutral" />
-          <Pill label={r.status === 'Grace' ? 'Grace · 4 days overdue' : r.status} tone={statusTone[r.status]} />
-        </Row>
-        <T>
-          {r.manager} · Paid through {r.paidThrough}{' '}
-          {r.status === 'Grace' ? 'Full tier access + reminders during grace' : r.status === 'Active' ? `Full ${r.plan} access` : 'Tier tools limited until payment is applied'}
-        </T>
+        <H>Subscription plans</H>
+        {api.plans.map((plan) => (
+          <ViewPlan key={plan.tier} name={plan.name} price={`${plan.currency} ${plan.price.toLocaleString('en-US')} / ${plan.billing_period}`} features={plan.features} />
+        ))}
+        {!api.loading && api.plans.length === 0 && !api.error ? <T muted>No subscription plans returned by the server.</T> : null}
       </Card>
 
-      {payment ? (
-        <Card>
-          <H>Verified payment</H>
-          <View style={{ marginBottom: 12 }}>
-            <Pill label={payment.applied ? 'Verified · Applied' : 'Verified · Not yet applied'} tone="green" />
-          </View>
-          <T style={{ fontFamily: fonts.bodyBold, fontSize: 17, marginBottom: 8 }}>
-            {payment.reference} · {rwf(payment.amount)}
-          </T>
-          <T style={{ marginBottom: 10 }}>
-            {payment.method} {payment.note}
-          </T>
-          <T muted small>
-            Demo transaction, not an official plan price. Cash and bank transfers can also be verified.
-          </T>
-        </Card>
-      ) : (
-        <InfoBox title="No verified payment" tone="yellow">
-          {`There is no verified payment waiting for ${r.name}. Verify a receipt first, then apply the paid period here.`}
-        </InfoBox>
-      )}
+      <Card>
+        <H>Restaurant subscription status</H>
+        {live.restaurants.map((restaurant) => (
+          <Row key={restaurant.id} style={{ justifyContent: 'space-between', paddingVertical: 7 }}>
+            <View style={{ flex: 1 }}>
+              <T strong>{restaurant.name}</T>
+              <T muted small>{restaurant.subscription_tier.toUpperCase()} · #{restaurant.code}</T>
+            </View>
+            <Pill label={statusLabel[restaurant.account_status]} tone={accountTone[restaurant.account_status]} />
+          </Row>
+        ))}
+        {!live.loading && !live.restaurants.length && !live.error ? <T muted>No restaurants returned by the server.</T> : null}
+      </Card>
 
-      {ready ? (
-        <>
-          <Card muted>
-            <H>Apply paid period</H>
-            <Label>Plan</Label>
-            <Select value={plan} options={plans} onChange={setPlan} />
-            <Gap h={12} />
-            <Label>Paid period</Label>
-            <DateRangePicker
-              startDate={period.startDate}
-              endDate={period.endDate}
-              onChange={setPeriod}
-              presets={[
-                { label: '30 Days (1 Month)', startDate: new Date(2026, 9, 5), endDate: new Date(2026, 10, 4) },
-                { label: '90 Days (3 Months)', startDate: new Date(2026, 9, 5), endDate: new Date(2027, 0, 3) },
-                { label: '1 Year', startDate: new Date(2026, 9, 5), endDate: new Date(2027, 9, 5) },
-              ]}
-            />
-            <Row gap={8} style={{ marginTop: 10, marginBottom: 12, flexWrap: 'wrap' }}>
-              <Pill label="+30 days" tone="neutral" onPress={() => setPeriod({ startDate: new Date(2026, 9, 5), endDate: new Date(2026, 10, 4) })} />
-              <Pill label="+90 days" tone="neutral" onPress={() => setPeriod({ startDate: new Date(2026, 9, 5), endDate: new Date(2027, 0, 3) })} />
-              <Pill label="+1 year" tone="neutral" onPress={() => setPeriod({ startDate: new Date(2026, 9, 5), endDate: new Date(2027, 9, 5) })} />
+      <Card>
+        <H>Payment confirmations · {pending.length} pending</H>
+        {api.payments.map((payment) => (
+          <View key={payment.id} style={{ paddingVertical: 8 }}>
+            <Row style={{ justifyContent: 'space-between', marginBottom: 4 }}>
+              <T strong>{payment.restaurant_name || payment.payer_name}</T>
+              <Pill
+                label={payment.status === 'paid' ? 'Approved' : payment.status === 'rejected' ? 'Rejected' : 'Pending'}
+                tone={payment.status === 'paid' ? 'green' : payment.status === 'rejected' ? 'red' : 'yellow'}
+              />
             </Row>
-            <PlanFeatures plan={plan} />
-            <Gap h={6} />
-            <Label>Reason</Label>
-            <Input value={reason} onChangeText={setReason} placeholder="Verified renewal payment" />
-          </Card>
-
-          <InfoBox title={`Review outcome · ${r.status} → Active`}>
-            Full {plan} access through {throughFormatted}. Reminders stop. {name} receives email + in-app confirmation. Derrick, reference, reason and dates are logged.
-          </InfoBox>
-          <Btn label="Confirm payment & activate" variant="primary" onPress={activate} />
-          <Gap h={14} />
-        </>
-      ) : null}
-
-      {payment ? (
-        <InfoBox title={payment.applied ? 'Payment applied' : 'After confirmation'}>
-          “Payment applied. {r.name} is Active.” {name} is notified and {payment.reference} is marked used, preventing a second application.
-        </InfoBox>
-      ) : null}
+            <T muted small>{paymentRef(payment)} · {formatDateTime(payment.submitted_at)}</T>
+            {payment.status === 'pending' ? (
+              <Btn label="Review payment" onPress={() => router.push({ pathname: '/requests/[id]', params: { id: payment.id } })} />
+            ) : null}
+          </View>
+        ))}
+        {!api.loading && !api.payments.length && !api.error ? <T muted>No payment confirmations returned by the server.</T> : null}
+      </Card>
+      <T muted small>Payment approvals are handled through the review flow; the API does not expose a separate manual renewal or payment-application action.</T>
     </AdminScreen>
+  );
+}
+
+function ViewPlan({ name, price, features }: { name: string; price: string; features: string[] }) {
+  return (
+    <View style={{ paddingVertical: 8 }}>
+      <Row style={{ justifyContent: 'space-between' }}>
+        <T strong>{name}</T>
+        <T>{price}</T>
+      </Row>
+      {features.map((feature) => <T key={feature} muted small style={{ marginTop: 4 }}>· {feature}</T>)}
+    </View>
   );
 }

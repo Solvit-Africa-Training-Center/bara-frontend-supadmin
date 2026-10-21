@@ -2,21 +2,21 @@ import Feather from '@expo/vector-icons/Feather';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
+import { usePayments } from '@/api/payments';
 import { useSession } from '@/api/session';
 import { AdminScreen, Btn, Card, confirm, H, T } from '@/components/ui';
-import { useStore } from '@/data/store';
 import { colors, fonts } from '@/theme';
 
-// The More menu is not drawn in Figma; Home says Subscriptions, Support and Reports are "Available from More".
 export default function More() {
   const { user, signOut } = useSession();
-  const { payments, session } = useStore();
+  const { payments } = usePayments();
   const [signingOut, setSigningOut] = useState(false);
 
   const items = [
-    { label: 'Subscriptions', hint: `${payments.filter((p) => !p.applied).length} verified payment waiting · Sample`, href: '/more/subscriptions' },
-    { label: 'Support', hint: `${session.resolved ? 'No open sessions' : `${session.ticket} · Read-only session open`} · Sample`, href: '/more/support' },
-    { label: 'Reports', hint: 'Billing, renewals and flagged operations · Sample', href: '/more/reports' },
+    { label: 'Subscriptions', hint: `${payments.filter((p) => p.status === 'pending').length} payment confirmations pending · Live`, href: '/more/subscriptions' },
+    { label: 'Managers', hint: 'Browse manager accounts and restaurant assignments', href: '/more/managers/index' },
+    { label: 'Support', hint: 'Support tickets are not available in the current API', href: '/more/support' },
+    { label: 'Reports', hint: 'Live restaurant and payment overview · No billing totals', href: '/more/reports' },
   ] as const;
 
   const fullName = [user?.first_name, user?.last_name].filter(Boolean).join(' ') || 'Platform owner';
@@ -28,9 +28,7 @@ export default function More() {
           <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <View style={{ flex: 1 }}>
               <T style={{ fontFamily: fonts.heading, fontSize: 16, marginBottom: 4 }}>{it.label}</T>
-              <T muted small>
-                {it.hint}
-              </T>
+              <T muted small>{it.hint}</T>
             </View>
             <Feather name="arrow-right" size={16} color={colors.primary} />
           </Card>
@@ -52,9 +50,7 @@ export default function More() {
           }
         />
       </Card>
-      <T muted small>
-        Owner session authenticated · Requests use live data from the Bara server
-      </T>
+      <T muted small>Owner session authenticated · Requests use live data from the Bara server</T>
     </AdminScreen>
   );
 }
