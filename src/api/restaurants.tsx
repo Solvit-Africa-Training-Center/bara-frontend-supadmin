@@ -1,8 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
-import { changeRestaurantStatus, listRestaurants, type RestaurantAction } from '@/api/admin';
+import { changeRestaurantStatus, createRestaurant as createRestaurantRequest, listRestaurants, type RestaurantAction } from '@/api/admin';
 import { errorMessage } from '@/api/client';
-import type { AccountStatus, SuperAdminRestaurant } from '@/api/types';
+import type { AccountStatus, RestaurantCreateInput, SuperAdminRestaurant } from '@/api/types';
 import type { Tone } from '@/components/ui';
 
 type Restaurants = {
@@ -10,6 +10,7 @@ type Restaurants = {
   loading: boolean;
   error: string | null;
   reload: () => Promise<void>;
+  createRestaurant: (restaurant: RestaurantCreateInput) => Promise<SuperAdminRestaurant>;
   changeStatus: (id: string, action: RestaurantAction, reason: string) => Promise<SuperAdminRestaurant>;
 };
 
@@ -28,7 +29,9 @@ export function RestaurantsProvider({ children }: { children: ReactNode }) {
           setRestaurants([...list].sort((a, b) => a.name.localeCompare(b.name)));
           setError(null);
         })
-        .catch((e) => setError(errorMessage(e)))
+        .catch((error: unknown) => {
+          setError(errorMessage(error));
+        })
         .finally(() => setLoading(false)),
     [],
   );
@@ -48,7 +51,16 @@ export function RestaurantsProvider({ children }: { children: ReactNode }) {
     return updated;
   }, []);
 
-  const value = useMemo(() => ({ restaurants, loading, error, reload, changeStatus }), [restaurants, loading, error, reload, changeStatus]);
+  const createRestaurant = useCallback(async (restaurant: RestaurantCreateInput) => {
+    const created = await createRestaurantRequest(restaurant);
+    setRestaurants((list) => [...list.filter((item) => item.id !== created.id), created].sort((a, b) => a.name.localeCompare(b.name)));
+    return created;
+  }, []);
+
+  const value = useMemo(
+    () => ({ restaurants, loading, error, reload, createRestaurant, changeStatus }),
+    [restaurants, loading, error, reload, createRestaurant, changeStatus],
+  );
   return <RestaurantsContext.Provider value={value}>{children}</RestaurantsContext.Provider>;
 }
 

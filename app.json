@@ -1,11 +1,17 @@
 {
   "expo": {
-    "name": "Bara Super Admin",
+    "name": "Bara Admin",
     "slug": "bara-super-admin",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "primaryColor": "#FAF3E7",
+    "androidStatusBar": {
+      "barStyle": "dark-content",
+      "backgroundColor": "#FAF3E7",
+      "translucent": true
+    },
     "ios": {
       "supportsTablet": true
     },
@@ -16,7 +22,8 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.uburizasolutions.barasuperadmin"
     },
     "web": {
       "favicon": "./assets/favicon.png",

@@ -3,13 +3,12 @@ import { Platform } from 'react-native';
 /**
  * Base URL of the Bara backend (Django REST API, docs at `/api/schema/swagger-ui/`).
  * Override per environment with `EXPO_PUBLIC_API_URL` in `.env` (no trailing slash).
- * The default is the backend team's ngrok server, the one with Super Admin PIN sign-in.
  */
-export const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'https://shirt-shady-daisy.ngrok-free.dev/api').replace(/\/$/, '');
+export const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'https://bara-backend-5g84.onrender.com/api').replace(/\/$/, '');
 
 /**
- * Where requests actually go. In development on web, an ngrok backend is reached through the
- * dev server's `/api-proxy` (see metro.config.js), because ngrok blocks browser GET requests.
+ * Where requests actually go. In development on web, ngrok backends use the dev server's
+ * `/api-proxy` (see metro.config.js) to bypass the browser warning page.
  */
 export const REQUEST_BASE_URL =
   __DEV__ && Platform.OS === 'web' && API_URL.includes('ngrok') && typeof window !== 'undefined'

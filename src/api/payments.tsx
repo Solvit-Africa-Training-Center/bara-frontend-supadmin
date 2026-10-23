@@ -25,34 +25,60 @@ export function PaymentsProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const reload = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const fetchPaymentsAndPlans = useCallback(async () => {
     try {
-      const [p, pl] = await Promise.all([listPayments(), listPlans().catch(() => [] as SubscriptionPlan[])]);
+      const [p, pl] = await Promise.all([listPayments(), listPlans()]);
       setPayments([...p].sort((a, b) => b.submitted_at.localeCompare(a.submitted_at)));
       setPlans(pl);
-    } catch (e) {
-      setError(errorMessage(e));
-    } finally {
-      setLoading(false);
+      setError(null);
+    } catch (error) {
+      setError(errorMessage(error));
     }
   }, []);
 
+  const reload = useCallback(async () => {
+    setLoading(true);
+    await fetchPaymentsAndPlans();
+    setLoading(false);
+  }, [fetchPaymentsAndPlans]);
+
   useEffect(() => {
-    if (status === 'signedIn') reload();
-    else {
-      setPayments([]);
-      setPlans([]);
+    let active = true;
+    if (status === 'signedIn') {
+      const timer = setTimeout(() => {
+        if (!active) return;
+        setLoading(true);
+        fetchPaymentsAndPlans().finally(() => {
+          if (active) setLoading(false);
+        });
+      }, 0);
+      return () => {
+        active = false;
+        clearTimeout(timer);
+      };
     }
-  }, [status, reload]);
+    return () => {
+      active = false;
+    };
+  }, [status, fetchPaymentsAndPlans]);
 
-  const replace = (updated: PaymentConfirmation) => setPayments((list) => list.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
+  const replace = (updated: PaymentConfirmation) =>
+    setPayments((list) => list.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
 
-  const approve = useCallback(async (id: string, startsAt: Date, endsAt: Date) => replace(await approvePayment(id, startsAt, endsAt)), []);
-  const reject = useCallback(async (id: string, reason: string) => replace(await rejectPayment(id, reason)), []);
+  const approve = useCallback(async (id: string, startsAt: Date, endsAt: Date) => {
+    const updated = await approvePayment(id, startsAt, endsAt);
+    replace(updated);
+  }, []);
 
-  const value = useMemo(() => ({ payments, plans, loading, error, reload, approve, reject }), [payments, plans, loading, error, reload, approve, reject]);
+  const reject = useCallback(async (id: string, reason: string) => {
+    const updated = await rejectPayment(id, reason);
+    replace(updated);
+  }, []);
+
+  const value = useMemo(
+    () => ({ payments, plans, loading, error, reload, approve, reject }),
+    [payments, plans, loading, error, reload, approve, reject],
+  );
   return <PaymentsContext.Provider value={value}>{children}</PaymentsContext.Provider>;
 }
 

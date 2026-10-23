@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View } from 'react-native';
+import { FlatList, RefreshControl, View } from 'react-native';
 import { router } from 'expo-router';
 import { formatDateTime, paymentRef, usePayments } from '@/api/payments';
 import type { PaymentConfirmation } from '@/api/types';
@@ -29,8 +29,25 @@ export default function Requests() {
     </View>
   );
 
-  return (
-    <AdminScreen title="Requests" showOwner refreshing={loading} onRefresh={reload}>
+  const renderPendingItem = ({ item: p }: { item: PaymentConfirmation }) => (
+    <Card key={p.id}>
+      <Row gap={14} style={{ marginBottom: 12 }}>
+        <Pill label="Payment confirmation" tone="neutral" />
+        <T muted>{formatDateTime(p.submitted_at)}</T>
+      </Row>
+      <T style={{ fontFamily: fonts.bodyMedium, fontSize: 15.5, marginBottom: 6 }}>{title(p)}</T>
+      <T muted style={{ marginBottom: 10 }}>
+        {p.payer_name} · {paymentRef(p)}
+      </T>
+      <T style={{ marginBottom: 14 }}>
+        {p.tier ? `${p.tier.toUpperCase()} requested · ` : ''}Payment submitted · Waiting for your check
+      </T>
+      <Btn label="Review & decide" onPress={() => router.push({ pathname: '/requests/[id]', params: { id: p.id } })} />
+    </Card>
+  );
+
+  const ListHeader = (
+    <View>
       <Label>Search requests</Label>
       <Input placeholder="Restaurant, payer or reference..." value={query} onChangeText={setQuery} />
       <Row style={{ marginVertical: 14 }}>
@@ -45,31 +62,44 @@ export default function Requests() {
           {q ? 'No pending requests match.' : 'No pending requests. New payment confirmations from restaurants appear here.'}
         </T>
       ) : null}
+    </View>
+  );
 
-      {tab === 'Pending'
-        ? shownPending.map((p) => (
-            <Card key={p.id}>
-              <Row gap={14} style={{ marginBottom: 12 }}>
-                <Pill label="Payment confirmation" tone="neutral" />
-                <T muted>{formatDateTime(p.submitted_at)}</T>
-              </Row>
-              <T style={{ fontFamily: fonts.bodyMedium, fontSize: 17, marginBottom: 10 }}>{title(p)}</T>
-              <T muted style={{ marginBottom: 10 }}>
-                {p.payer_name} · {paymentRef(p)}
-              </T>
-              <T style={{ marginBottom: 14 }}>
-                {p.tier ? `${p.tier.toUpperCase()} requested · ` : ''}Payment submitted · Waiting for your check
-              </T>
-              <Btn label="Review & decide" onPress={() => router.push({ pathname: '/requests/[id]', params: { id: p.id } })} />
-            </Card>
-          ))
-        : null}
-
-      {shownCompleted.length > 0 ? (
-        <InfoBox title="Completed decisions">{shownCompleted.map((p) => `${paymentRef(p)} · ${outcome(p)}`).join('\n')}</InfoBox>
-      ) : tab === 'Completed' && !loading && !error ? (
-        <T muted>No completed decisions yet.</T>
+  const ListFooter = (
+    <View>
+      {tab === 'Completed' ? (
+        shownCompleted.length > 0 ? (
+          <InfoBox title="Completed decisions">
+            {shownCompleted.map((p) => `${paymentRef(p)} · ${outcome(p)}`).join('\n')}
+          </InfoBox>
+        ) : !loading && !error ? (
+          <T muted>No completed decisions yet.</T>
+        ) : null
       ) : null}
+    </View>
+  );
+
+  return (
+    <AdminScreen title="Requests" showOwner scroll={false}>
+      <FlatList
+        data={tab === 'Pending' ? shownPending : []}
+        keyExtractor={(p) => p.id}
+        renderItem={renderPendingItem}
+        ListHeaderComponent={ListHeader}
+        ListFooterComponent={ListFooter}
+        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={loading && payments.length > 0}
+            onRefresh={reload}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+            progressBackgroundColor={colors.card}
+          />
+        }
+      />
     </AdminScreen>
   );
 }

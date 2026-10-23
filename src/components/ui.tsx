@@ -2,7 +2,7 @@ import Feather from '@expo/vector-icons/Feather';
 import { useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
-  Alert,
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   RefreshControl,
@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
   type TextInputProps,
   type TextStyle,
@@ -19,7 +20,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { colors, fonts } from '@/theme';
 import { useSession } from '@/api/session';
-import { type Plan, planFeatures } from '@/data/store';
 
 /* ---------- Screen frame: "BARA / PLATFORM ADMIN" header ---------- */
 
@@ -34,48 +34,87 @@ export function AdminScreen({
   title,
   back,
   showOwner,
-  demo,
+  showEyebrow,
   refreshing,
   onRefresh,
+  scroll = true,
   children,
 }: {
   title: string;
   back?: string;
   showOwner?: boolean;
-  /** Marks screens that still show sample data because the API has no endpoint for them yet. */
-  demo?: boolean;
+  showEyebrow?: boolean;
   refreshing?: boolean;
   onRefresh?: () => void;
+  scroll?: boolean;
   children: ReactNode;
 }) {
   const owner = useOwnerName();
+  const { width, height } = useWindowDimensions();
+  const isLandscape = width > height;
+  const columnStyle = [s.column, isLandscape && { maxWidth: Math.min(width - 48, 720) }];
+
   return (
-    <SafeAreaView style={s.safe} edges={['top']}>
-      <View style={s.header}>
-        <View style={s.column}>
-          <Text style={s.eyebrow}>BARA / PLATFORM ADMIN</Text>
-          {back ? (
-            <Pressable onPress={() => router.back()} hitSlop={8} style={s.back}>
-              <Feather name="arrow-left" size={15} color={colors.primary} />
-              <Text style={s.backText}>{back}</Text>
-            </Pressable>
-          ) : null}
-          <Text style={s.title}>{title}</Text>
-          {showOwner ? <Text style={s.owner}>{`${owner} · Platform owner · ${today()}`}</Text> : null}
-          {demo ? (
-            <View style={{ marginTop: 10 }}>
-              <Pill label="Sample data · Not connected to the API yet" tone="yellow" />
-            </View>
-          ) : null}
-        </View>
-      </View>
-      <ScrollView
-        contentContainerStyle={s.content}
-        keyboardShouldPersistTaps="handled"
-        refreshControl={onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={colors.primary} /> : undefined}
+    <SafeAreaView style={s.safe} edges={['top', 'left', 'right']}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
       >
-        <View style={s.column}>{children}</View>
-      </ScrollView>
+        <View style={s.header}>
+          <View style={columnStyle}>
+            {showEyebrow ? <Text style={s.eyebrow}>BARA / PLATFORM ADMIN</Text> : null}
+            {back ? (
+              <View style={s.titleRow}>
+                <Pressable
+                  onPress={() => router.back()}
+                  hitSlop={12}
+                  style={s.backIconBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Back to ${back}`}
+                >
+                  <Feather name="arrow-left" size={20} color={colors.primary} />
+                </Pressable>
+                <Text style={[s.title, s.titleInRow]} numberOfLines={1}>
+                  {title}
+                </Text>
+              </View>
+            ) : (
+              <Text style={s.title}>{title}</Text>
+            )}
+            {showOwner ? <Text style={s.owner}>{`${owner} · Platform owner · ${today()}`}</Text> : null}
+          </View>
+        </View>
+        {scroll ? (
+          <ScrollView
+            contentContainerStyle={[
+              s.content,
+              { flexGrow: 1, paddingBottom: isLandscape ? 32 : 120 },
+              isLandscape && { paddingHorizontal: 20 },
+            ]}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              onRefresh ? (
+                <RefreshControl
+                  refreshing={!!refreshing}
+                  onRefresh={onRefresh}
+                  tintColor={colors.primary}
+                  colors={[colors.primary]}
+                  progressBackgroundColor={colors.card}
+                />
+              ) : undefined
+            }
+          >
+            <View style={columnStyle}>{children}</View>
+          </ScrollView>
+        ) : (
+          <View style={[{ flex: 1 }, isLandscape && { paddingHorizontal: 20 }]}>
+            <View style={[columnStyle, { flex: 1 }]}>{children}</View>
+          </View>
+        )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -136,13 +175,31 @@ export function LoadState({ loading, error, onRetry }: { loading: boolean; error
 export function H({ children, style }: { children: ReactNode; style?: TextStyle }) {
   return <Text style={[s.cardTitle, style]}>{children}</Text>;
 }
-export function T({ children, style, muted, small, strong }: { children: ReactNode; style?: TextStyle; muted?: boolean; small?: boolean; strong?: boolean }) {
+export function T({
+  children,
+  style,
+  muted,
+  small,
+  strong,
+  numberOfLines,
+  adjustsFontSizeToFit,
+}: {
+  children: ReactNode;
+  style?: TextStyle;
+  muted?: boolean;
+  small?: boolean;
+  strong?: boolean;
+  numberOfLines?: number;
+  adjustsFontSizeToFit?: boolean;
+}) {
   return (
     <Text
+      numberOfLines={numberOfLines}
+      adjustsFontSizeToFit={adjustsFontSizeToFit}
       style={[
         s.body,
         muted && { color: colors.textMuted },
-        small && { fontSize: 15.5, lineHeight: 21 },
+        small && s.small,
         strong && { fontFamily: fonts.bodySemi },
         style,
       ]}
@@ -213,7 +270,9 @@ export function Btn({ label, onPress, variant = 'outline', disabled, style }: { 
         style,
       ]}
     >
-      <Text style={[s.btnText, { color: primary ? '#fff' : colors.text }]}>{label}</Text>
+      <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[s.btnText, { color: primary ? '#fff' : colors.text }]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -221,8 +280,8 @@ export function Btn({ label, onPress, variant = 'outline', disabled, style }: { 
 export function LinkArrow({ label, onPress }: { label: string; onPress?: () => void }) {
   return (
     <Pressable onPress={onPress} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-      <Text style={{ fontFamily: fonts.bodySemi, fontSize: 16.5, color: colors.primary }}>{label}</Text>
-      <Feather name="arrow-right" size={15} color={colors.primary} />
+      <Text style={{ fontFamily: fonts.bodySemi, fontSize: 14, color: colors.primary }}>{label}</Text>
+      <Feather name="arrow-right" size={14} color={colors.primary} />
     </Pressable>
   );
 }
@@ -266,14 +325,14 @@ export function Select<V extends string>({ value, options, onChange }: { value: 
 
 /* ---------- Plan feature list (PREMIUM / PRO / BASIC) ---------- */
 
-export function PlanFeatures({ plan }: { plan: Plan }) {
+export function PlanFeatures({ plan, features }: { plan: string; features: string[] }) {
   return (
     <View>
-      <Text style={s.planName}>{plan}</Text>
-      {planFeatures(plan).map((f) => (
-        <View key={f.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 }}>
-          {f.included ? <Feather name="check" size={14} color={colors.text} /> : <Text style={s.body}>—</Text>}
-          <Text style={s.body}>{f.included ? f.label : `No ${f.label}`}</Text>
+      <Text style={s.planName}>{plan.toUpperCase()}</Text>
+      {features.map((feature) => (
+        <View key={feature} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 }}>
+          <Feather name="check" size={14} color={colors.text} />
+          <Text style={s.body}>{feature}</Text>
         </View>
       ))}
     </View>
@@ -282,48 +341,42 @@ export function PlanFeatures({ plan }: { plan: Plan }) {
 
 /* ---------- Dialogs ---------- */
 
-export function confirm(title: string, message: string, onYes: () => void, yesLabel = 'Confirm') {
-  if (Platform.OS === 'web') {
-    if (window.confirm(`${title}\n\n${message}`)) onYes();
-    return;
-  }
-  Alert.alert(title, message, [
-    { text: 'Cancel', style: 'cancel' },
-    { text: yesLabel, onPress: onYes },
-  ]);
-}
+export { customConfirm as confirm, customNotify as notify, CustomAlertProvider } from './alert';
 
-export function notify(title: string, message: string) {
-  if (Platform.OS === 'web') window.alert(`${title}\n\n${message}`);
-  else Alert.alert(title, message);
-}
+/* ---------- Date Pickers ---------- */
+
+export { DateRangePicker, type DateRangeValue, type PresetRange } from './date-range-picker';
 
 /* ---------- Styles ---------- */
 
 export const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.divider, backgroundColor: colors.bg },
-  eyebrow: { fontFamily: fonts.bodySemi, fontSize: 13, letterSpacing: 0.2, color: colors.primary },
-  back: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 10, alignSelf: 'flex-start' },
-  backText: { fontFamily: fonts.body, fontSize: 16, color: colors.primary },
+  header: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: colors.divider, backgroundColor: colors.bg },
+  eyebrow: { fontFamily: fonts.bodySemi, fontSize: 12, letterSpacing: 0.3, color: colors.primary, marginBottom: 4 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  backIconBtn: { width: 34, height: 34, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginLeft: -6 },
+  titleInRow: { marginTop: 0, flex: 1, fontSize: 21, lineHeight: 27 },
+  back: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, alignSelf: 'flex-start' },
+  backText: { fontFamily: fonts.body, fontSize: 14, color: colors.primary },
   // Keeps content at phone width when the app is opened in a wide browser window.
-  column: { width: '100%', maxWidth: 520, alignSelf: 'center' },
-  title: { fontFamily: fonts.heading, fontSize: 30, lineHeight: 36, color: colors.text, marginTop: 8 },
-  owner: { fontFamily: fonts.body, fontSize: 16.5, color: colors.textMuted, marginTop: 6 },
-  content: { padding: 20, paddingBottom: 28 },
-  card: { backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 18, marginBottom: 14 },
-  cardTitle: { fontFamily: fonts.heading, fontSize: 18.5, color: colors.text, marginBottom: 10 },
-  body: { fontFamily: fonts.body, fontSize: 16.5, lineHeight: 23.5, color: colors.text },
-  label: { fontFamily: fonts.bodySemi, fontSize: 16, color: colors.text, marginBottom: 7 },
-  info: { borderRadius: 12, padding: 14, marginBottom: 14 },
-  infoTitle: { fontFamily: fonts.bodySemi, fontSize: 18.5, color: colors.text, marginBottom: 6 },
-  infoBody: { fontFamily: fonts.body, fontSize: 16.5, lineHeight: 23.5, color: colors.text },
+  column: { width: '100%', maxWidth: 540, alignSelf: 'center' },
+  title: { fontFamily: fonts.heading, fontSize: 24, lineHeight: 30, color: colors.text, marginTop: 4 },
+  owner: { fontFamily: fonts.body, fontSize: 13, lineHeight: 18, color: colors.textMuted, marginTop: 4 },
+  content: { padding: 16, paddingBottom: 32 },
+  card: { backgroundColor: colors.card, borderRadius: 12, borderWidth: 1, borderColor: colors.border, padding: 16, marginBottom: 12 },
+  cardTitle: { fontFamily: fonts.heading, fontSize: 16, lineHeight: 22, color: colors.text, marginBottom: 8 },
+  body: { fontFamily: fonts.body, fontSize: 14, lineHeight: 20, color: colors.text },
+  small: { fontSize: 12, lineHeight: 16.5 },
+  label: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.text, marginBottom: 6 },
+  info: { borderRadius: 10, padding: 12, marginBottom: 12 },
+  infoTitle: { fontFamily: fonts.bodySemi, fontSize: 15, lineHeight: 20, color: colors.text, marginBottom: 4 },
+  infoBody: { fontFamily: fonts.body, fontSize: 13.5, lineHeight: 19, color: colors.text },
   pill: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, alignSelf: 'flex-start' },
-  pillText: { fontFamily: fonts.bodySemi, fontSize: 15.5 },
-  btn: { minHeight: 50, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
-  btnText: { fontFamily: fonts.bodySemi, fontSize: 17.5 },
-  input: { backgroundColor: colors.field, borderWidth: 1, borderColor: colors.border, borderRadius: 10, minHeight: 48, paddingHorizontal: 14, paddingVertical: 11, fontFamily: fonts.body, fontSize: 18.5, color: colors.text },
-  inputText: { fontFamily: fonts.body, fontSize: 18.5, color: colors.text, flexShrink: 1 },
+  pillText: { fontFamily: fonts.bodySemi, fontSize: 12, lineHeight: 16 },
+  btn: { minHeight: 44, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
+  btnText: { fontFamily: fonts.bodySemi, fontSize: 14.5, lineHeight: 19 },
+  input: { backgroundColor: colors.field, borderWidth: 1, borderColor: colors.border, borderRadius: 10, minHeight: 44, paddingHorizontal: 12, paddingVertical: 10, fontFamily: fonts.body, fontSize: 14.5, color: colors.text },
+  inputText: { fontFamily: fonts.body, fontSize: 14.5, color: colors.text, flexShrink: 1 },
   menu: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 10, marginTop: 4, paddingVertical: 4 },
-  planName: { fontFamily: fonts.bodySemi, fontSize: 14.5, color: colors.textMuted, marginLeft: 10, marginBottom: 8 },
+  planName: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.textMuted, marginLeft: 10, marginBottom: 6 },
 });

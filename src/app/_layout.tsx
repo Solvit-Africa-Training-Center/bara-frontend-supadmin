@@ -7,11 +7,12 @@ import { Ubuntu_700Bold } from '@expo-google-fonts/ubuntu/700Bold';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Platform, StatusBar as RNStatusBar, View } from 'react-native';
+import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { CustomAlertProvider } from '@/components/alert';
 import { PaymentsProvider } from '@/api/payments';
 import { SessionProvider, useSession } from '@/api/session';
-import { StoreProvider } from '@/data/store';
 import { colors } from '@/theme';
 
 function Navigator() {
@@ -42,16 +43,29 @@ function Navigator() {
 export default function RootLayout() {
   const [loaded] = useFonts({ Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, Ubuntu_500Medium, Ubuntu_700Bold });
 
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      let meta = document.querySelector('meta[name="theme-color"]');
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.setAttribute('name', 'theme-color');
+        document.head.appendChild(meta);
+      }
+      meta.setAttribute('content', colors.bg);
+    }
+  }, []);
+
   if (!loaded) return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
 
   return (
     <SafeAreaProvider>
       <SessionProvider>
         <PaymentsProvider>
-          <StoreProvider>
+          <CustomAlertProvider>
             <StatusBar style="dark" />
+            {Platform.OS === 'android' ? <RNStatusBar backgroundColor={colors.bg} translucent barStyle="dark-content" /> : null}
             <Navigator />
-          </StoreProvider>
+          </CustomAlertProvider>
         </PaymentsProvider>
       </SessionProvider>
     </SafeAreaProvider>

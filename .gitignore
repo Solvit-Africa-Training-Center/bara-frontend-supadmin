@@ -43,3 +43,6 @@ yarn-error.*
 
 # Figma exports (large)
 design/
+
+# IDE
+.idea/

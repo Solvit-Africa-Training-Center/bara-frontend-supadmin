@@ -4,13 +4,13 @@ const { getDefaultConfig } = require('expo/metro-config');
 const config = getDefaultConfig(__dirname);
 
 /**
- * Dev-only proxy for the web app. A free ngrok backend answers browser GET requests with its
+ * Dev-only proxy for the web app when using ngrok. A free ngrok backend answers browser GET requests with its
  * "visit site" warning page (ERR_NGROK_6024), and the browser may not send the header that skips it
  * (the backend's CORS rules don't allow it). So in development the web app calls
  * `<dev server>/api-proxy/...` and this forwards the request to the backend with that header.
  * Keep the fallback URL in sync with `API_URL` in src/api/config.ts.
  */
-const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'https://shirt-shady-daisy.ngrok-free.dev/api').replace(/\/$/, '');
+const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'https://bara-backend-5g84.onrender.com/api').replace(/\/$/, '');
 const PROXY_PREFIX = '/api-proxy';
 const FORWARDED_HEADERS = ['accept', 'authorization', 'content-type'];
 

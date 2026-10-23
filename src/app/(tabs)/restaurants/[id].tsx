@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
-import type { RestaurantAction } from '@/api/admin';
+import { getRestaurant, type RestaurantAction } from '@/api/admin';
 import { errorMessage } from '@/api/client';
-import { formatDateTime } from '@/api/payments';
+import { formatDateTime, usePayments } from '@/api/payments';
 import { accountTone, managerName, placeOf, statusLabel, tierLabel, useRestaurants } from '@/api/restaurants';
 import type { AccountStatus } from '@/api/types';
 import { AdminScreen, Btn, Card, confirm, Gap, H, InfoBox, Input, Label, LoadState, notify, Pill, PlanFeatures, Row, Select, T } from '@/components/ui';
-import { firstName, type Plan } from '@/data/store';
 import { fonts } from '@/theme';
+
+const firstName = (name: string) => name.split(' ')[0] || name;
 
 const actions: { value: RestaurantAction; label: string; result: AccountStatus; effect: string }[] = [
   { value: 'restrict', label: 'Restrict access', result: 'restricted', effect: 'All tier tools become read-only until the account is reactivated.' },
@@ -18,8 +19,21 @@ const actions: { value: RestaurantAction; label: string; result: AccountStatus; 
 
 export default function RestaurantDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { restaurants, loading, error, reload, changeStatus } = useRestaurants();
-  const r = restaurants.find((x) => x.id === id);
+  const { restaurants, loading: listLoading, error: listError, changeStatus } = useRestaurants();
+  const { plans } = usePayments();
+  const cached = restaurants.find((x) => x.id === id);
+  const [detail, setDetail] = useState<typeof cached>(cached);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const load = useCallback(async () => {
+    if (!id) return;
+    setLoading(true);
+    try { setDetail(await getRestaurant(id)); setError(null); }
+    catch (e) { setError(errorMessage(e)); }
+    finally { setLoading(false); }
+  }, [id]);
+  useEffect(() => { const timer = setTimeout(() => void load(), 0); return () => clearTimeout(timer); }, [load]);
+  const r = detail ?? cached;
   const options = actions.filter((a) => a.result !== r?.account_status);
   const [action, setAction] = useState<RestaurantAction>(r?.account_status === 'active' ? 'restrict' : 'reactivate');
   const [reason, setReason] = useState('');
@@ -27,16 +41,16 @@ export default function RestaurantDetail() {
 
   if (!r) {
     return (
-      <AdminScreen title="Restaurant" back="Restaurants">
-        <LoadState loading={loading} error={error} onRetry={reload} />
-        {!loading && !error ? <T muted>Restaurant not found.</T> : null}
+      <AdminScreen title="Restaurant" back="Restaurants" refreshing={loading || listLoading} onRefresh={load}>
+        <LoadState loading={loading && !listLoading} error={error ?? listError} onRetry={load} />
+        {!loading && !error && !listLoading && !listError ? <T muted>Restaurant not found.</T> : null}
       </AdminScreen>
     );
   }
 
   const chosen = options.find((a) => a.value === action) ?? options[0];
   const status = statusLabel[r.account_status] ?? r.account_status;
-  const plan = (r.subscription_tier?.toUpperCase() || 'BASIC') as Plan;
+  const plan = plans.find((item) => item.tier === r.subscription_tier);
   const manager = r.manager;
 
   const submit = () => {
@@ -45,6 +59,7 @@ export default function RestaurantDetail() {
       setSaving(true);
       try {
         const updated = await changeStatus(r.id, chosen.value, reason.trim());
+        setDetail(updated);
         setReason('');
         setAction(updated.account_status === 'active' ? 'restrict' : 'reactivate');
         notify('Status changed', `${r.name} is now ${statusLabel[updated.account_status] ?? updated.account_status}.`);
@@ -57,7 +72,7 @@ export default function RestaurantDetail() {
   };
 
   return (
-    <AdminScreen title={r.name} back="Restaurants" refreshing={loading} onRefresh={reload}>
+    <AdminScreen title={r.name} back="Restaurants" refreshing={loading} onRefresh={load}>
       <Row style={{ marginBottom: 14 }} gap={14}>
         <Pill label={status} tone={accountTone[r.account_status] ?? 'neutral'} />
         <T muted>
@@ -67,10 +82,10 @@ export default function RestaurantDetail() {
 
       <Card>
         <H>Manager & access</H>
-        <T style={{ fontFamily: fonts.bodySemi, fontSize: 18.5, marginBottom: 10 }}>
+        <T style={{ fontFamily: fonts.bodySemi, fontSize: 15.5, marginBottom: 8 }}>
           {managerName(r)} · Primary manager
         </T>
-        <T style={{ marginBottom: 10 }}>
+        <T style={{ marginBottom: 8 }}>
           {[manager?.email, manager?.phone_number || r.phone].filter(Boolean).join(' · ') || 'No contact details'}
         </T>
         <T muted>
@@ -81,11 +96,11 @@ export default function RestaurantDetail() {
 
       <Card muted>
         <H>Plan & setup</H>
-        <PlanFeatures plan={plan} />
-        <T style={{ fontFamily: fonts.bodySemi, fontSize: 18.5, marginTop: 6, marginBottom: 10 }}>
+        {plan ? <PlanFeatures plan={plan.name} features={plan.features} /> : <T muted>Plan features are unavailable.</T>}
+        <T style={{ fontFamily: fonts.bodySemi, fontSize: 15.5, marginTop: 6, marginBottom: 8 }}>
           {tierLabel(r)} plan · {status}
         </T>
-        <T muted style={{ marginBottom: 14 }}>
+        <T muted style={{ marginBottom: 12 }}>
           {r.setup_completed ? 'Setup complete' : 'Setup not finished'} · Joined {formatDateTime(r.created_at)}
         </T>
         <Btn label="Review payment requests" onPress={() => router.push('/requests')} />

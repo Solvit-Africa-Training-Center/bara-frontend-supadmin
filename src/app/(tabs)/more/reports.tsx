@@ -1,102 +1,67 @@
-import { useState } from 'react';
-import { View } from 'react-native';
-import { router } from 'expo-router';
-import { AdminScreen, Btn, Card, Gap, H, InfoBox, Label, notify, Pill, Row, Select, T } from '@/components/ui';
-import { useStore } from '@/data/store';
-import { colors, fonts } from '@/theme';
+import { AdminScreen, Card, H, LoadState, Pill, Row, T } from '@/components/ui';
+import { formatDateTime, paymentRef, usePayments } from '@/api/payments';
+import { accountTone, statusLabel, useRestaurants } from '@/api/restaurants';
+import type { AccountStatus } from '@/api/types';
 
-// Sample paid-subscription totals from the Figma frame (thousands of RWF).
-const months = [
-  { m: 'May', v: 120 },
-  { m: 'Jun', v: 148 },
-  { m: 'Jul', v: 136 },
-  { m: 'Aug', v: 175 },
-  { m: 'Sep', v: 194 },
-  { m: 'Oct', v: 220 },
-];
-
-const ranges = [
-  { value: 'oct', label: '01–08 Oct 2026' },
-  { value: 'sep', label: '01–30 Sep 2026' },
-  { value: '6m', label: 'May–Oct 2026' },
-] as const;
+const statuses: AccountStatus[] = ['active', 'pending_payment', 'grace', 'restricted', 'locked', 'archived'];
 
 export default function PlatformReports() {
-  const { restaurants } = useStore();
-  const [range, setRange] = useState<(typeof ranges)[number]['value']>('oct');
-  const count = (s: string) => restaurants.filter((r) => r.status === s).length;
-  const max = Math.max(...months.map((x) => x.v));
+  const live = useRestaurants();
+  const api = usePayments();
+  const refreshing = live.loading || api.loading;
+  const reload = () => Promise.all([live.reload(), api.reload()]).then(() => undefined);
+  const pending = api.payments.filter((payment) => payment.status === 'pending').length;
+  const paid = api.payments.filter((payment) => payment.status === 'paid').length;
+  const rejected = api.payments.filter((payment) => payment.status === 'rejected').length;
+  const recentPayments = api.payments.slice(0, 5);
 
   return (
-    <AdminScreen title="Platform reports" back="More / Reports" demo>
-      <Label>Date range</Label>
-      <Select value={range} options={[...ranges]} onChange={setRange} />
-      <T muted small style={{ marginTop: 10, marginBottom: 14 }}>
-        Refreshed 09:40 · Africa/Kigali · Demo dataset
-      </T>
+    <AdminScreen title="Platform reports" back="More / Reports" refreshing={refreshing} onRefresh={reload}>
+      <T muted small style={{ marginBottom: 12 }}>Live counts from platform restaurants, payment confirmations, and subscription plans.</T>
+      <LoadState loading={live.loading && live.restaurants.length === 0} error={live.error} onRetry={live.reload} />
+      <LoadState loading={api.loading && api.payments.length === 0} error={api.error} onRetry={api.reload} />
 
       <Card>
-        <H>Paid subscription receipts</H>
-        <T style={{ fontFamily: fonts.heading, fontSize: 34, lineHeight: 42.5, marginBottom: 8 }}>RWF 220,000</T>
-        <T muted style={{ marginBottom: 14 }}>
-          October to date · Bara billing, not restaurant sales
-        </T>
-        <T muted style={{ marginBottom: 12 }}>
-          Paid subscriptions · sample RWF totals
-        </T>
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: 96, gap: 12, paddingHorizontal: 4 }}>
-          {months.map((x, i) => (
-            <View
-              key={x.m}
-              style={{ flex: 1, height: `${(x.v / max) * 100}%`, backgroundColor: i === months.length - 1 ? colors.primary : '#E8A23A', borderTopLeftRadius: 2, borderTopRightRadius: 2 }}
+        <H>Restaurant accounts · {live.restaurants.length}</H>
+        <Row gap={8}>
+          {statuses.map((status) => (
+            <Pill
+              key={status}
+              label={`${statusLabel[status]} · ${live.restaurants.filter((restaurant) => restaurant.account_status === status).length}`}
+              tone={accountTone[status]}
             />
           ))}
-        </View>
-        <View style={{ flexDirection: 'row', gap: 12, paddingHorizontal: 4, marginTop: 8, marginBottom: 10 }}>
-          {months.map((x) => (
-            <T key={x.m} muted small style={{ flex: 1, textAlign: 'center' }}>
-              {x.m}
-            </T>
-          ))}
-        </View>
-        <T muted small>
-          RWF {months.map((x) => `${x.v}k`).join(' · ')} (Oct to date)
-        </T>
-      </Card>
-
-      <Card muted>
-        <H>Renewals & account health</H>
-        <Row style={{ marginBottom: 12 }} gap={14}>
-          <Pill label={`${count('Active')} Active`} tone="green" />
-          <Pill label={`${count('Grace')} Grace`} tone="yellow" />
-          <Pill label={`${count('Restricted')} Restricted`} tone="red" />
-          <Pill label={`${count('Locked')} Locked`} tone="red" />
-          <Pill label={`${count('Archived')} Archived`} tone="plain" />
         </Row>
-        <T style={{ fontSize: 17.5, lineHeight: 26.5 }}>
-          2 renewals due this month · {restaurants.filter((r) => r.status !== 'Active').length} overdue 4 of {restaurants.length} accounts synced today{' '}
-          {count('Active') + count('Grace')} accounts have full tier access, including grace
-        </T>
       </Card>
-
-      <InfoBox title="Practical next step">
-        Apply Nyamirambo Kitchen’s verified renewal before grace ends. Follow up on Kivu Table’s unverified payment evidence.
-      </InfoBox>
 
       <Card>
-        <H>Flagged operations</H>
-        <T style={{ fontSize: 17.5, lineHeight: 26.5, marginBottom: 12 }}>Kigali Heights: oil usage +31% vs prior week; 7 evening voids vs 2.</T>
-        <T muted style={{ marginBottom: 14 }}>
-          Synced 09:38 · Aggregate tenant summaries. A flag is not proof of an error.
-        </T>
-        <Btn label="Inspect in read-only support" onPress={() => router.push('/more/support')} />
+        <H>Restaurants by subscription tier</H>
+        {api.plans.map((plan) => (
+          <Row key={plan.tier} style={{ justifyContent: 'space-between', paddingVertical: 6 }}>
+            <T>{plan.name} · {plan.currency} {plan.price.toLocaleString('en-US')} / {plan.billing_period}</T>
+            <T strong>{live.restaurants.filter((restaurant) => restaurant.subscription_tier === plan.tier).length}</T>
+          </Row>
+        ))}
+        {!api.loading && api.plans.length === 0 && !api.error ? <T muted>No plans returned by the server.</T> : null}
+      </Card>
+
+      <Card>
+        <H>Payment confirmations</H>
+        <Row gap={8} style={{ marginBottom: 12 }}>
+          <Pill label={`Pending · ${pending}`} tone="yellow" />
+          <Pill label={`Approved · ${paid}`} tone="green" />
+          <Pill label={`Rejected · ${rejected}`} tone="red" />
+        </Row>
+        {recentPayments.length ? recentPayments.map((payment) => (
+          <T key={payment.id} style={{ marginBottom: 8 }}>
+            {paymentRef(payment)} · {payment.restaurant_name || payment.payer_name} · {payment.status} · {formatDateTime(payment.submitted_at)}
+          </T>
+        )) : !api.loading && !api.error ? <T muted>No payment confirmations returned by the server.</T> : null}
       </Card>
 
       <T muted small style={{ marginBottom: 14 }}>
-        Sources: billing ledger, account states and synced tenant summaries. No raw staff data in insights. Forecast unavailable: insufficient consistent history.
+        This API does not expose platform billing totals, historical revenue, or operational flags. No sales or billing figures are estimated here.
       </T>
-      <Btn label="Export platform summary" onPress={() => notify('Summary exported', 'The platform summary for 01–08 Oct 2026 is ready to share.')} />
-      <Gap h={4} />
     </AdminScreen>
   );
 }
